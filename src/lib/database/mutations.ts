@@ -377,6 +377,25 @@ export async function createSuggestion(
   return data.id;
 }
 
+export async function updateSuggestion(
+  id: string,
+  updates: SuggestionUpdate
+): Promise<boolean> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("suggestions")
+    .update(updates)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error updating suggestion:", error);
+    return false;
+  }
+
+  return true;
+}
+
 export async function applySuggestion(id: string): Promise<boolean> {
   const supabase = await createClient();
 

@@ -1,5 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 
+interface TableRow {
+  table_name: string;
+}
+
+interface EnumRow {
+  typname: string;
+}
+
 export interface DatabaseTestResult {
   connected: boolean;
   error?: string;
@@ -30,7 +38,7 @@ export async function testDatabaseConnection(): Promise<DatabaseTestResult> {
     const supabase = await createClient();
 
     // Test basic connection
-    const { data: connectionTest, error: connectionError } = await supabase
+    const { error: connectionError } = await supabase
       .from("users")
       .select("count")
       .limit(1);
@@ -53,7 +61,9 @@ export async function testDatabaseConnection(): Promise<DatabaseTestResult> {
     });
 
     if (!tablesError && tables) {
-      result.details.tables = tables.map((row: any) => row.table_name);
+      result.details.tables = (tables as TableRow[]).map(
+        (row) => row.table_name
+      );
 
       const expectedTables = [
         "users",
@@ -80,7 +90,7 @@ export async function testDatabaseConnection(): Promise<DatabaseTestResult> {
     });
 
     if (!enumsError && enums) {
-      result.details.enums = enums.map((row: any) => row.typname);
+      result.details.enums = (enums as EnumRow[]).map((row) => row.typname);
 
       const expectedEnums = [
         "income_cadence",
