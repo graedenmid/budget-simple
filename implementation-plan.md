@@ -25,8 +25,8 @@ The primary goal is to reduce monthly budgeting setup time by 80% compared to sp
 
 **Done**: Implement core data models and backend infrastructure
 
-- [ ] Create database schema for all core tables (users, income_sources, budget_items, pay_periods, allocations, expenses, suggestions)
-- [ ] Implement Row-Level Security (RLS) policies for user data isolation
+- [x] Create database schema for all core tables (users, income_sources, budget_items, pay_periods, allocations, expenses, suggestions)
+- [x] Implement Row-Level Security (RLS) policies for user data isolation
 - [ ] Set up Supabase Edge Functions for business logic calculations
 - [ ] Create database indexes for optimal query performance
 - [ ] Implement data validation and sanitization functions
