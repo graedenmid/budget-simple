@@ -53,6 +53,7 @@ The primary goal is to reduce monthly budgeting setup time by 80% compared to sp
 - [ ] Create dynamic calculation engine for pro-rating income
 - [ ] Implement income source activation/deactivation
 - [ ] Add income history tracking and reporting
+- [ ] Delete test page for database at rm -rf src/app/test-db
 
 ### Phase 5: Budget Item Configuration
 
