@@ -1,5 +1,5 @@
-// This file will be generated from Supabase CLI after project setup
-// For now, we'll use a placeholder structure based on our PRD requirements
+// Budget Simple Database Types
+// Generated from database schema - keep in sync with migrations
 
 export type Json =
   | string
@@ -21,14 +21,13 @@ export interface Database {
           updated_at: string;
         };
         Insert: {
-          id?: string;
+          id: string;
           email: string;
           name?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
-          id?: string;
           email?: string;
           name?: string | null;
           updated_at?: string;
@@ -41,13 +40,7 @@ export interface Database {
           name: string;
           gross_amount: number;
           net_amount: number;
-          cadence:
-            | "weekly"
-            | "bi-weekly"
-            | "semi-monthly"
-            | "monthly"
-            | "quarterly"
-            | "annual";
+          cadence: Database["public"]["Enums"]["income_cadence"];
           start_date: string;
           is_active: boolean;
           created_at: string;
@@ -59,31 +52,17 @@ export interface Database {
           name: string;
           gross_amount: number;
           net_amount: number;
-          cadence:
-            | "weekly"
-            | "bi-weekly"
-            | "semi-monthly"
-            | "monthly"
-            | "quarterly"
-            | "annual";
+          cadence: Database["public"]["Enums"]["income_cadence"];
           start_date: string;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
-          id?: string;
-          user_id?: string;
           name?: string;
           gross_amount?: number;
           net_amount?: number;
-          cadence?:
-            | "weekly"
-            | "bi-weekly"
-            | "semi-monthly"
-            | "monthly"
-            | "quarterly"
-            | "annual";
+          cadence?: Database["public"]["Enums"]["income_cadence"];
           start_date?: string;
           is_active?: boolean;
           updated_at?: string;
@@ -94,26 +73,10 @@ export interface Database {
           id: string;
           user_id: string;
           name: string;
-          category:
-            | "Bills"
-            | "Savings"
-            | "Debt"
-            | "Giving"
-            | "Discretionary"
-            | "Other";
-          calc_type:
-            | "FIXED"
-            | "GROSS_PERCENT"
-            | "NET_PERCENT"
-            | "REMAINING_PERCENT";
+          category: Database["public"]["Enums"]["budget_category"];
+          calc_type: Database["public"]["Enums"]["calc_type"];
           value: number;
-          cadence:
-            | "weekly"
-            | "bi-weekly"
-            | "semi-monthly"
-            | "monthly"
-            | "quarterly"
-            | "annual";
+          cadence: Database["public"]["Enums"]["income_cadence"];
           depends_on: string[] | null;
           priority: number;
           is_active: boolean;
@@ -124,26 +87,10 @@ export interface Database {
           id?: string;
           user_id: string;
           name: string;
-          category:
-            | "Bills"
-            | "Savings"
-            | "Debt"
-            | "Giving"
-            | "Discretionary"
-            | "Other";
-          calc_type:
-            | "FIXED"
-            | "GROSS_PERCENT"
-            | "NET_PERCENT"
-            | "REMAINING_PERCENT";
+          category: Database["public"]["Enums"]["budget_category"];
+          calc_type: Database["public"]["Enums"]["calc_type"];
           value: number;
-          cadence:
-            | "weekly"
-            | "bi-weekly"
-            | "semi-monthly"
-            | "monthly"
-            | "quarterly"
-            | "annual";
+          cadence: Database["public"]["Enums"]["income_cadence"];
           depends_on?: string[] | null;
           priority?: number;
           is_active?: boolean;
@@ -151,36 +98,144 @@ export interface Database {
           updated_at?: string;
         };
         Update: {
-          id?: string;
-          user_id?: string;
           name?: string;
-          category?:
-            | "Bills"
-            | "Savings"
-            | "Debt"
-            | "Giving"
-            | "Discretionary"
-            | "Other";
-          calc_type?:
-            | "FIXED"
-            | "GROSS_PERCENT"
-            | "NET_PERCENT"
-            | "REMAINING_PERCENT";
+          category?: Database["public"]["Enums"]["budget_category"];
+          calc_type?: Database["public"]["Enums"]["calc_type"];
           value?: number;
-          cadence?:
-            | "weekly"
-            | "bi-weekly"
-            | "semi-monthly"
-            | "monthly"
-            | "quarterly"
-            | "annual";
+          cadence?: Database["public"]["Enums"]["income_cadence"];
           depends_on?: string[] | null;
           priority?: number;
           is_active?: boolean;
           updated_at?: string;
         };
       };
-      // Additional tables will be added as we progress
+      pay_periods: {
+        Row: {
+          id: string;
+          user_id: string;
+          start_date: string;
+          end_date: string;
+          income_source_id: string;
+          expected_net: number;
+          actual_net: number | null;
+          status: Database["public"]["Enums"]["pay_period_status"];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          start_date: string;
+          end_date: string;
+          income_source_id: string;
+          expected_net: number;
+          actual_net?: number | null;
+          status?: Database["public"]["Enums"]["pay_period_status"];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          start_date?: string;
+          end_date?: string;
+          income_source_id?: string;
+          expected_net?: number;
+          actual_net?: number | null;
+          status?: Database["public"]["Enums"]["pay_period_status"];
+          updated_at?: string;
+        };
+      };
+      allocations: {
+        Row: {
+          id: string;
+          pay_period_id: string;
+          budget_item_id: string;
+          expected_amount: number;
+          actual_amount: number | null;
+          status: Database["public"]["Enums"]["allocation_status"];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          pay_period_id: string;
+          budget_item_id: string;
+          expected_amount: number;
+          actual_amount?: number | null;
+          status?: Database["public"]["Enums"]["allocation_status"];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          expected_amount?: number;
+          actual_amount?: number | null;
+          status?: Database["public"]["Enums"]["allocation_status"];
+          updated_at?: string;
+        };
+      };
+      expenses: {
+        Row: {
+          id: string;
+          user_id: string;
+          pay_period_id: string | null;
+          category: string;
+          description: string;
+          amount: number;
+          date: string;
+          budget_item_id: string | null;
+          type: Database["public"]["Enums"]["expense_type"];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          pay_period_id?: string | null;
+          category: string;
+          description: string;
+          amount: number;
+          date: string;
+          budget_item_id?: string | null;
+          type?: Database["public"]["Enums"]["expense_type"];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          pay_period_id?: string | null;
+          category?: string;
+          description?: string;
+          amount?: number;
+          date?: string;
+          budget_item_id?: string | null;
+          type?: Database["public"]["Enums"]["expense_type"];
+          updated_at?: string;
+        };
+      };
+      suggestions: {
+        Row: {
+          id: string;
+          pay_period_id: string;
+          type: string;
+          amount: number;
+          status: Database["public"]["Enums"]["suggestion_status"];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          pay_period_id: string;
+          type: string;
+          amount: number;
+          status?: Database["public"]["Enums"]["suggestion_status"];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          type?: string;
+          amount?: number;
+          status?: Database["public"]["Enums"]["suggestion_status"];
+          updated_at?: string;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -208,9 +263,31 @@ export interface Database {
         | "GROSS_PERCENT"
         | "NET_PERCENT"
         | "REMAINING_PERCENT";
+      pay_period_status: "ACTIVE" | "COMPLETED";
+      allocation_status: "PAID" | "UNPAID";
+      expense_type: "BUDGET_PAYMENT" | "EXPENSE";
+      suggestion_status: "PENDING" | "APPLIED";
     };
     CompositeTypes: {
       [_ in never]: never;
     };
   };
 }
+
+// Helper type aliases for easier use
+export type User = Database["public"]["Tables"]["users"]["Row"];
+export type IncomeSource =
+  Database["public"]["Tables"]["income_sources"]["Row"];
+export type BudgetItem = Database["public"]["Tables"]["budget_items"]["Row"];
+export type PayPeriod = Database["public"]["Tables"]["pay_periods"]["Row"];
+export type Allocation = Database["public"]["Tables"]["allocations"]["Row"];
+export type Expense = Database["public"]["Tables"]["expenses"]["Row"];
+export type Suggestion = Database["public"]["Tables"]["suggestions"]["Row"];
+
+export type IncomeCadence = Database["public"]["Enums"]["income_cadence"];
+export type BudgetCategory = Database["public"]["Enums"]["budget_category"];
+export type CalcType = Database["public"]["Enums"]["calc_type"];
+export type PayPeriodStatus = Database["public"]["Enums"]["pay_period_status"];
+export type AllocationStatus = Database["public"]["Enums"]["allocation_status"];
+export type ExpenseType = Database["public"]["Enums"]["expense_type"];
+export type SuggestionStatus = Database["public"]["Enums"]["suggestion_status"];
