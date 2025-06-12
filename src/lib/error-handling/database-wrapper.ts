@@ -204,7 +204,8 @@ export class DatabaseOperation {
     }
 
     return this.execute(
-      () => this.supabase.from(table).insert(data).select().single(),
+      async () =>
+        await this.supabase.from(table).insert(data).select().single(),
       `INSERT_${table.toUpperCase()}`,
       { table, data }
     );
@@ -217,8 +218,8 @@ export class DatabaseOperation {
     idField = "id"
   ) {
     return this.execute(
-      () =>
-        this.supabase
+      async () =>
+        await this.supabase
           .from(table)
           .update(data)
           .eq(idField, id)
@@ -231,7 +232,7 @@ export class DatabaseOperation {
 
   async delete(table: string, id: string, idField = "id") {
     return this.execute(
-      () => this.supabase.from(table).delete().eq(idField, id),
+      async () => await this.supabase.from(table).delete().eq(idField, id),
       `DELETE_${table.toUpperCase()}`,
       { table, id, idField }
     );
@@ -243,7 +244,7 @@ export class DatabaseOperation {
     filters?: Record<string, unknown>
   ) {
     return this.execute(
-      () => {
+      async () => {
         let query = this.supabase.from(table).select(columns);
 
         if (filters) {
@@ -252,7 +253,7 @@ export class DatabaseOperation {
           });
         }
 
-        return query;
+        return await query;
       },
       `SELECT_${table.toUpperCase()}`,
       { table, columns, filters }
