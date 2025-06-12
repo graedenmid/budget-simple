@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -20,6 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { GoogleLoginButton } from "@/components/auth/google-login-button";
 
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -48,6 +49,14 @@ function LoginForm() {
     }
   };
 
+  // Handle OAuth errors from URL params
+  useEffect(() => {
+    const oauthError = searchParams.get("error");
+    if (oauthError === "oauth_error") {
+      setError("Failed to sign in with Google. Please try again.");
+    }
+  }, [searchParams]);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
@@ -58,6 +67,21 @@ function LoginForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="space-y-4">
+            <GoogleLoginButton />
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {error && (
               <Alert variant="destructive">
