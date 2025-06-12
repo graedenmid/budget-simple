@@ -3,3 +3,94 @@ description:
 globs:
 alwaysApply: false
 ---
+# Budget Simple - Project Knowledge Base
+
+## Project Overview
+Budget Simple is a web-based personal finance management application that replaces spreadsheet-based budgeting with an automated, user-friendly solution. The app enables percentage-based and fixed-amount budgeting, expense tracking, and intelligent surplus allocation recommendations.
+
+## Core Principles
+- **Automation First**: Eliminate manual calculations and repetitive data entry
+- **Flexibility**: Support varied income/expense cadences and budget structures
+- **Simplicity**: Intuitive interface that reduces setup time by 80% vs spreadsheets
+- **Privacy**: User data security and privacy are paramount
+- **Performance**: Fast, responsive experience on all devices
+
+## Tech Stack & Architecture
+- **Frontend**: Next.js 14 (App Router) with React 18 and TypeScript
+- **Styling**: Tailwind CSS with Shadcn/ui component library
+- **Backend**: Supabase (PostgreSQL database, authentication, Edge Functions)
+- **Deployment**: Vercel for frontend, Supabase for backend services
+- **CI/CD**: GitHub Actions for automated testing and deployment
+
+## Key Features (MVP Scope)
+1. **User Authentication**: Secure login/registration with Supabase Auth
+2. **Income Management**: Multiple income sources with flexible cadences
+3. **Budget Items**: Fixed amounts or percentage-based calculations
+4. **Expense Tracking**: Categorized expense logging and history
+5. **Pay Period Tracking**: Automatic allocation and bill payment tracking
+6. **Smart Recommendations**: AI-driven surplus allocation suggestions
+
+## Data Model Core Entities
+- **users**: User accounts and profiles
+- **income_sources**: User income with cadence settings
+- **budget_items**: Budget line items with calculation rules
+- **pay_periods**: Paycheck cycles and allocation periods
+- **allocations**: Budget item allocations per pay period
+- **expenses**: Tracked spending and categorization
+- **suggestions**: System-generated allocation recommendations
+
+## Business Logic Rules
+- Net income must be ≤ gross income
+- Budget items can depend on other items for "remaining income" calculations
+- Pay periods auto-generate based on income cadence
+- Surplus funds trigger automatic recommendation generation
+- All calculations maintain precision for financial accuracy
+
+## Security Requirements
+- Row-Level Security (RLS) on all database tables
+- JWT-based authentication with proper session management
+- Input validation and sanitization on all user inputs
+- HTTPS enforcement and secure environment variable handling
+- OWASP compliance for web security
+
+## Performance Standards
+- First Contentful Paint: <2s desktop, <3.5s mobile
+- Page load times: <3s
+- Database query performance: <500ms
+- 99.5% uptime requirement
+- Mobile-responsive design with PWA capabilities
+
+## Development Standards
+- TypeScript strict mode enabled
+- File-by-file development approach
+- Comprehensive error handling and user feedback
+- WCAG 2.1 AA accessibility compliance
+- 80%+ test coverage for critical business logic
+
+## User Experience Priorities
+1. **Onboarding**: Simple setup process for income and initial budget items
+2. **Pay Day Flow**: Quick reconciliation of income and bill payments (<2 minutes)
+3. **Expense Entry**: Fast, mobile-friendly expense logging
+4. **Recommendations**: Clear, actionable surplus allocation suggestions
+5. **History**: Easy access to spending trends and budget performance
+
+## Integration Points
+- Supabase Auth for user management
+- Supabase Edge Functions for complex calculations
+- Vercel Analytics for usage tracking
+- GitHub Actions for CI/CD pipeline
+- Future: Plaid integration for transaction imports
+
+## Compliance & Privacy
+- GDPR-compliant data handling
+- User data encryption at rest and in transit
+- Minimal data collection principle
+- Clear privacy policy and terms of service
+- User control over data export and deletion
+
+## Success Metrics
+- User retention: 70%+ after 30 days
+- Setup time: <15 minutes for complete budget configuration
+- Recommendation acceptance: >30% of suggested allocations applied
+- Budget adherence: Users maintain spending within allocated amounts
+- Net Promoter Score: ≥40 within 3 months of beta launch
