@@ -121,6 +121,25 @@ This is Budget Simple, a web-based personal finance management application built
 - Run linting and type checks before commits
 - Test all changes thoroughly before deployment
 
+## Git Workflow (REQUIRED)
+
+- NEVER push directly to main branch
+- Always create feature branches for changes
+- Use descriptive branch names: feature/add-auth, fix/button-styling, etc.
+- Push branches and create Pull Requests for review
+- Let GitHub Actions CI/CD run on all PRs
+- Review Vercel preview deployments before merging
+- Only merge to main after CI passes and review is complete
+- Delete feature branches after successful merge
+
+## Branch Naming Convention
+
+- Features: feature/description-of-feature
+- Bug fixes: fix/description-of-fix
+- Database changes: db/description-of-schema-change
+- UI updates: ui/description-of-ui-change
+- Documentation: docs/description-of-docs-change
+
 ## Terminal Commands
 
 - Never run terminal commands automatically
