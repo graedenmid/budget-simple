@@ -18,8 +18,8 @@ The primary goal is to reduce monthly budgeting setup time by 80% compared to sp
 - [x] Set up Supabase project with PostgreSQL database
 - [x] Configure Supabase authentication (email/password, social logins)
 - [x] Set up Vercel deployment pipeline
-- [ ] Configure GitHub Actions for CI/CD (linting, tests, type checks)
-- [ ] Create project folder structure
+- [x] Configure GitHub Actions for CI/CD (linting, tests, type checks)
+- [x] Create project folder structure
 
 ### Phase 2: Database Schema & Backend Setup
 
