@@ -140,9 +140,46 @@ This is Budget Simple, a web-based personal finance management application built
 - UI updates: ui/description-of-ui-change
 - Documentation: docs/description-of-docs-change
 
-## Terminal Commands
+## Phase Completion Review Process
 
-- Never run terminal commands automatically
-- Always provide command prompts for the user to run manually
+- **Linter Error Review**: After completing each major step/phase in the implementation plan, perform a comprehensive review of all linter errors
+- **Error Assessment**: Carefully analyze each linter error to understand its cause and impact on code quality
+- **Resolution Strategy**: For each error, determine whether it should be:
+  - Fixed immediately (critical errors affecting functionality or security)
+  - Fixed in the current phase (quality improvements that are quick to resolve)
+  - Deferred to a later phase (non-critical styling or preference issues)
+  - Documented as intentional (rare cases where the linter rule doesn't apply)
+- **Clean State**: Ensure each completed phase leaves the codebase in a clean, maintainable state
+- **Technical Debt Management**: Track deferred linter errors and plan their resolution in future phases
+
+## Terminal Commands (CRITICAL RULE - NEVER VIOLATE)
+
+- **NEVER run terminal commands automatically** - Always provide command prompts for the user to run manually
 - Write clear, complete commands with explanations
 - Do not ask permission to run commands - just provide them
+- **Example Format**: "Please run: `npm run lint` to check for linter errors"
+
+## Rule Compliance Checklist (MANDATORY BEFORE EVERY ACTION)
+
+**STOP AND VERIFY BEFORE EACH RESPONSE:**
+
+1. **Terminal Commands Check**
+
+   - [ ] Am I about to run a terminal command? → PROVIDE COMMAND PROMPT INSTEAD
+   - [ ] Am I asking permission to run commands? → NEVER ASK, JUST PROVIDE THEM
+
+2. **File Change Protocol**
+
+   - [ ] Am I making file changes? → Follow file-by-file approach
+   - [ ] Am I creating unnecessary files? → Only create if absolutely necessary
+
+3. **Phase Completion Protocol**
+
+   - [ ] Did I just complete a major step/phase? → MUST review linter errors first
+   - [ ] Am I proceeding to next phase? → Previous phase must be in clean state
+
+4. **Implementation Tracking**
+   - [ ] Am I following the implementation-plan.md sequence? → Stay on planned track
+   - [ ] Am I updating completion status correctly? → Mark steps as done with summary
+
+**CRITICAL: If ANY checkbox is unchecked, STOP and address the violation immediately.**
