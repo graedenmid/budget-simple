@@ -15,12 +15,14 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           cookiesToSet.forEach(({ name, value, options }) =>
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({
             request,
           });
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -37,11 +39,15 @@ export async function middleware(request: NextRequest) {
   // Define protected routes
   const protectedRoutes = ["/dashboard", "/budget", "/income", "/expenses"];
   const authRoutes = ["/login", "/register", "/reset-password"];
+  const publicRoutes = ["/", "/auth/callback"];
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
   );
   const isAuthRoute = authRoutes.some((route) =>
+    request.nextUrl.pathname.startsWith(route)
+  );
+  const isPublicRoute = publicRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
   );
 
@@ -56,6 +62,11 @@ export async function middleware(request: NextRequest) {
   if (isAuthRoute && user) {
     // Redirect to dashboard if trying to access auth routes while authenticated
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Allow public routes to pass through
+  if (isPublicRoute) {
+    return supabaseResponse;
   }
 
   return supabaseResponse;
