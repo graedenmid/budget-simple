@@ -10,47 +10,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  LogOut,
-  User,
-  DollarSign,
-  Target,
-  TrendingUp,
-  Calculator,
-} from "lucide-react";
+import { User, DollarSign, Target, TrendingUp, Calculator } from "lucide-react";
 
 export default function DashboardPage() {
-  const { user, signOut, loading } = useAuth();
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error("Failed to sign out:", error);
-    }
-  };
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="mt-1 text-gray-600">Welcome to Budget Simple</p>
-          </div>
-          <Button onClick={handleSignOut} variant="outline" size="sm">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign out
-          </Button>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-1 text-gray-600">Welcome to Budget Simple</p>
         </div>
 
         {/* User Info Card */}
