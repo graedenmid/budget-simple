@@ -147,98 +147,109 @@ export default function BudgetPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Budget Management</h1>
-          <div className="flex items-center gap-3 mt-1">
-            <p className="text-gray-600">
-              Manage your budget items, dependencies, and calculation priorities
-            </p>
-            <ValidationStatus
-              budgetItems={budgetItems}
-              incomeSources={incomeSources}
-            />
+    <div className="py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Budget Management
+              </h1>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-gray-600">
+                  Manage your budget items, dependencies, and calculation
+                  priorities
+                </p>
+                <ValidationStatus
+                  budgetItems={budgetItems}
+                  incomeSources={incomeSources}
+                />
+              </div>
+            </div>
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Budget Item
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Add Budget Item</DialogTitle>
+                </DialogHeader>
+                <BudgetItemForm
+                  onSuccess={handleFormSuccess}
+                  onCancel={() => setIsFormOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
+
+          {/* Main Content */}
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
+              <TabsTrigger value="priorities">Priorities</TabsTrigger>
+              <TabsTrigger value="validation">Validation</TabsTrigger>
+              <TabsTrigger value="templates">Templates</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              <BudgetItemList />
+            </TabsContent>
+
+            <TabsContent value="analytics" className="space-y-6">
+              <CategoryAnalytics />
+            </TabsContent>
+
+            <TabsContent value="dependencies" className="space-y-6">
+              <DependencyManager
+                budgetItems={budgetItems}
+                onUpdatePriorities={handleUpdatePriorities}
+                onUpdateDependencies={handleUpdateDependencies}
+              />
+            </TabsContent>
+
+            <TabsContent value="priorities" className="space-y-6">
+              <PriorityOrdering
+                budgetItems={budgetItems}
+                onUpdatePriorities={handleUpdatePriorities}
+              />
+            </TabsContent>
+
+            <TabsContent value="validation" className="space-y-6">
+              <ValidationDashboard
+                budgetItems={budgetItems}
+                incomeSources={incomeSources}
+                onItemsUpdated={handleDataRefresh}
+              />
+            </TabsContent>
+
+            <TabsContent value="templates" className="space-y-6">
+              <div className="space-y-8">
+                {/* Quick Setup Wizard */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">
+                    Quick Setup Wizard
+                  </h3>
+                  <QuickSetupWizard onComplete={handleDataRefresh} />
+                </div>
+
+                {/* Template Browser */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">
+                    Browse Templates
+                  </h3>
+                  <TemplateBrowser onTemplateApplied={handleDataRefresh} />
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Budget Item
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Add Budget Item</DialogTitle>
-            </DialogHeader>
-            <BudgetItemForm
-              onSuccess={handleFormSuccess}
-              onCancel={() => setIsFormOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
       </div>
-
-      {/* Main Content */}
-      <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="dependencies">Dependencies</TabsTrigger>
-          <TabsTrigger value="priorities">Priorities</TabsTrigger>
-          <TabsTrigger value="validation">Validation</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-6">
-          <BudgetItemList />
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-6">
-          <CategoryAnalytics />
-        </TabsContent>
-
-        <TabsContent value="dependencies" className="space-y-6">
-          <DependencyManager
-            budgetItems={budgetItems}
-            onUpdatePriorities={handleUpdatePriorities}
-            onUpdateDependencies={handleUpdateDependencies}
-          />
-        </TabsContent>
-
-        <TabsContent value="priorities" className="space-y-6">
-          <PriorityOrdering
-            budgetItems={budgetItems}
-            onUpdatePriorities={handleUpdatePriorities}
-          />
-        </TabsContent>
-
-        <TabsContent value="validation" className="space-y-6">
-          <ValidationDashboard
-            budgetItems={budgetItems}
-            incomeSources={incomeSources}
-            onItemsUpdated={handleDataRefresh}
-          />
-        </TabsContent>
-
-        <TabsContent value="templates" className="space-y-6">
-          <div className="space-y-8">
-            {/* Quick Setup Wizard */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Quick Setup Wizard</h3>
-              <QuickSetupWizard onComplete={handleDataRefresh} />
-            </div>
-
-            {/* Template Browser */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Browse Templates</h3>
-              <TemplateBrowser onTemplateApplied={handleDataRefresh} />
-            </div>
-          </div>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
