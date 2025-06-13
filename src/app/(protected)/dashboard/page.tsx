@@ -10,7 +10,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { LogOut, User, DollarSign } from "lucide-react";
+import {
+  LogOut,
+  User,
+  DollarSign,
+  Target,
+  TrendingUp,
+  Calculator,
+} from "lucide-react";
 
 export default function DashboardPage() {
   const { user, signOut, loading } = useAuth();
@@ -110,21 +117,44 @@ export default function DashboardPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Budget Items</CardTitle>
+              <CardTitle className="flex items-center">
+                <Target className="mr-2 h-5 w-5" />
+                Budget Items
+              </CardTitle>
               <CardDescription>
-                Set up your budget categories and allocations
+                Configure your budget categories and allocations
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" disabled>
-                Coming in Phase 5
+              <Button asChild className="w-full">
+                <Link href="/budget">Manage Budget Items</Link>
               </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Expenses</CardTitle>
+              <CardTitle className="flex items-center">
+                <Calculator className="mr-2 h-5 w-5" />
+                Pay Periods
+              </CardTitle>
+              <CardDescription>
+                Track paycheck allocations and spending
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" disabled>
+                Coming in Phase 6
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <TrendingUp className="mr-2 h-5 w-5" />
+                Expenses
+              </CardTitle>
               <CardDescription>
                 Track your spending and categorize expenses
               </CardDescription>
@@ -135,24 +165,89 @@ export default function DashboardPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Smart Recommendations</CardTitle>
+              <CardDescription>
+                Get intelligent suggestions for surplus funds
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" disabled>
+                Coming in Phase 8
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Analytics Dashboard</CardTitle>
+              <CardDescription>
+                View budget health and spending insights
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" disabled>
+                Coming in Phase 9
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Phase Status */}
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle>Phase 4: Income Management System 🔄</CardTitle>
+            <CardTitle>Development Progress 🚀</CardTitle>
             <CardDescription>
-              Building income source management functionality
+              Current implementation status and upcoming features
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2 text-sm">
-              <p>✅ Phase 3: Authentication & User Management Complete</p>
-              <p>🔄 Income source management interface</p>
-              <p>⏳ Multiple income cadences support</p>
-              <p>⏳ Income validation logic</p>
-              <p>⏳ Dynamic calculation engine</p>
-              <p>⏳ Income history tracking</p>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center space-x-2">
+                <span className="text-green-600">✅</span>
+                <span>Phase 1: Project Setup & Infrastructure</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-green-600">✅</span>
+                <span>Phase 2: Database Schema & Backend Setup</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-green-600">✅</span>
+                <span>Phase 3: Authentication & User Management</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-green-600">✅</span>
+                <span>Phase 4: Income Management System</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-green-600">✅</span>
+                <span>Phase 5: Budget Item Configuration</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-blue-600">🔄</span>
+                <span>Phase 6: Pay Period & Allocation Management</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-400">⏳</span>
+                <span>Phase 7: Expense Tracking System</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-400">⏳</span>
+                <span>Phase 8: Smart Recommendations Engine</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-400">⏳</span>
+                <span>Phase 9: Core User Interface & Dashboard</span>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Currently Working On:</strong> Pay Period Management -
+                Implementing automatic pay period generation and allocation
+                calculations
+              </p>
             </div>
           </CardContent>
         </Card>
