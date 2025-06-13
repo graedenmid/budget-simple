@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CheckCircle2, Calendar, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PayPeriodSelector, AllocationList } from "@/components/allocations";
+import { PayPeriodStatusManager } from "@/components/pay-periods/pay-period-status-manager";
 import { PayPeriod } from "@/lib/types/pay-periods";
 import { usePayPeriods } from "@/lib/hooks/use-pay-periods";
 
@@ -21,7 +22,18 @@ export default function PayPeriodsPage() {
   const [selectedPayPeriod, setSelectedPayPeriod] = useState<PayPeriod | null>(
     null
   );
-  const { refreshPayPeriods, isLoading } = usePayPeriods();
+  const [canAutoComplete, setCanAutoComplete] = useState(false);
+  const { refreshPayPeriods, isLoading, checkCanAutoComplete } =
+    usePayPeriods();
+
+  // Check if pay period can auto-complete when selected
+  useEffect(() => {
+    if (selectedPayPeriod?.status === "ACTIVE") {
+      checkCanAutoComplete(selectedPayPeriod.id).then(setCanAutoComplete);
+    } else {
+      setCanAutoComplete(false);
+    }
+  }, [selectedPayPeriod, checkCanAutoComplete]);
 
   const handlePayPeriodSelect = (payPeriod: PayPeriod) => {
     setSelectedPayPeriod(payPeriod);
@@ -29,6 +41,14 @@ export default function PayPeriodsPage() {
 
   const handleRefresh = () => {
     refreshPayPeriods();
+  };
+
+  const handleStatusChange = () => {
+    refreshPayPeriods();
+    // Re-check auto-completion status
+    if (selectedPayPeriod?.status === "ACTIVE") {
+      checkCanAutoComplete(selectedPayPeriod.id).then(setCanAutoComplete);
+    }
   };
 
   return (
@@ -138,13 +158,27 @@ export default function PayPeriodsPage() {
         </Card>
       )}
 
-      {/* Allocation List */}
-      <AllocationList
-        payPeriod={selectedPayPeriod}
-        onAllocationUpdate={() => {
-          // Optionally refresh pay period data if needed
-        }}
-      />
+      {/* Main Content Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Allocation List */}
+        <div className="lg:col-span-2">
+          <AllocationList
+            payPeriod={selectedPayPeriod}
+            onAllocationUpdate={handleStatusChange}
+          />
+        </div>
+
+        {/* Status Manager Sidebar */}
+        {selectedPayPeriod && (
+          <div className="lg:col-span-1">
+            <PayPeriodStatusManager
+              payPeriod={selectedPayPeriod}
+              onStatusChange={handleStatusChange}
+              canAutoComplete={canAutoComplete}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { PayPeriodService } from "./pay-period-service";
 
 // Simple database error handler
 function handleDatabaseError(error: unknown, message: string): Error {
@@ -20,6 +21,7 @@ import type {
 
 export class AllocationService {
   private supabase = createClient();
+  private payPeriodService = new PayPeriodService();
 
   /**
    * Get allocations for a specific pay period
@@ -467,12 +469,20 @@ export class AllocationService {
 
   /**
    * Mark allocation as paid with optional actual amount
+   * Automatically tries to complete the pay period if all allocations are paid
    */
   async markAllocationAsPaid(
     allocationId: string,
-    actualAmount?: number
+    actualAmount?: number,
+    userId?: string
   ): Promise<Allocation> {
     try {
+      // Get the allocation to find the pay period
+      const allocation = await this.getAllocationById(allocationId, false);
+      if (!allocation) {
+        throw new Error("Allocation not found");
+      }
+
       const updates: AllocationUpdate = {
         status: "PAID",
         updated_at: new Date().toISOString(),
@@ -482,7 +492,25 @@ export class AllocationService {
         updates.actual_amount = actualAmount;
       }
 
-      return await this.updateAllocation(allocationId, updates);
+      const updatedAllocation = await this.updateAllocation(
+        allocationId,
+        updates
+      );
+
+      // Try to auto-complete the pay period if all allocations are paid
+      if (userId) {
+        try {
+          await this.payPeriodService.tryAutoComplete(
+            allocation.pay_period_id,
+            userId
+          );
+        } catch (error) {
+          // Don't fail the allocation update if auto-completion fails
+          console.warn("Failed to auto-complete pay period:", error);
+        }
+      }
+
+      return updatedAllocation;
     } catch (error) {
       throw handleDatabaseError(error, "Failed to mark allocation as paid");
     }
@@ -490,9 +518,41 @@ export class AllocationService {
 
   /**
    * Mark allocation as unpaid
+   * This may reactivate a completed pay period if needed
    */
-  async markAllocationAsUnpaid(allocationId: string): Promise<Allocation> {
+  async markAllocationAsUnpaid(
+    allocationId: string,
+    userId?: string
+  ): Promise<Allocation> {
     try {
+      // Get the allocation to find the pay period
+      const allocation = await this.getAllocationById(allocationId, false);
+      if (!allocation) {
+        throw new Error("Allocation not found");
+      }
+
+      // Check if the pay period is completed
+      if (userId) {
+        try {
+          const { data: payPeriod } = await this.supabase
+            .from("pay_periods")
+            .select("status")
+            .eq("id", allocation.pay_period_id)
+            .single();
+
+          if (payPeriod?.status === "COMPLETED") {
+            // Reactivate the pay period since we're marking an allocation as unpaid
+            await this.payPeriodService.reactivatePayPeriod(
+              allocation.pay_period_id,
+              userId
+            );
+          }
+        } catch (error) {
+          // Don't fail the allocation update if reactivation fails
+          console.warn("Failed to reactivate pay period:", error);
+        }
+      }
+
       return await this.updateAllocation(allocationId, {
         status: "UNPAID",
         actual_amount: null,

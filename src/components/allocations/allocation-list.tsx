@@ -30,6 +30,9 @@ export function AllocationList({
     payPeriod?.id || null
   );
 
+  // Determine if allocations should be disabled (pay period is completed)
+  const isDisabled = payPeriod?.status === "COMPLETED";
+
   const [summary, setSummary] = useState({
     totalExpected: 0,
     totalActual: 0,
@@ -259,6 +262,7 @@ export function AllocationList({
                     <AllocationItem
                       allocation={allocation}
                       onUpdate={handleAllocationUpdate}
+                      disabled={isDisabled}
                     />
                     {index < categoryAllocations.length - 1 && (
                       <Separator className="my-3" />

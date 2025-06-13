@@ -222,7 +222,8 @@ export function useAllocationOperations() {
 
         const result = await allocationService.markAllocationAsPaid(
           allocationId,
-          actualAmount
+          actualAmount,
+          user.id
         );
         return result;
       } catch (err) {
@@ -250,7 +251,8 @@ export function useAllocationOperations() {
         setError(null);
 
         const result = await allocationService.markAllocationAsUnpaid(
-          allocationId
+          allocationId,
+          user.id
         );
         return result;
       } catch (err) {
