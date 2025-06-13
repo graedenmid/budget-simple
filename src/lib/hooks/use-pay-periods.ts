@@ -201,11 +201,9 @@ export function usePayPeriods(
           updates
         );
 
-        // Update local state
+        // Update the pay period in our state
         setPayPeriods((prev) =>
-          prev.map((period) =>
-            period.id === payPeriodId ? updatedPayPeriod : period
-          )
+          prev.map((p) => (p.id === payPeriodId ? updatedPayPeriod : p))
         );
 
         // Update current pay period if it's the one being updated
@@ -246,21 +244,15 @@ export function usePayPeriods(
           actualNet
         );
 
-        // Update local state
+        // Update the pay period in our state
         setPayPeriods((prev) =>
-          prev.map((period) =>
-            period.id === payPeriodId ? completedPayPeriod : period
-          )
+          prev.map((p) => (p.id === payPeriodId ? completedPayPeriod : p))
         );
 
-        // If this was the current pay period, clear it
+        // Update current pay period if it's the one being completed
         if (currentPayPeriod?.id === payPeriodId) {
-          setCurrentPayPeriod(null);
+          setCurrentPayPeriod(completedPayPeriod);
         }
-
-        // Refresh stats
-        const statistics = await payPeriodService.getPayPeriodStats(user.id);
-        setStats(statistics);
 
         return completedPayPeriod;
       } catch (err) {
@@ -291,19 +283,13 @@ export function usePayPeriods(
 
         await payPeriodService.deletePayPeriod(payPeriodId, user.id);
 
-        // Update local state
-        setPayPeriods((prev) =>
-          prev.filter((period) => period.id !== payPeriodId)
-        );
+        // Remove the pay period from our state
+        setPayPeriods((prev) => prev.filter((p) => p.id !== payPeriodId));
 
-        // If this was the current pay period, clear it
+        // Clear current pay period if it's the one being deleted
         if (currentPayPeriod?.id === payPeriodId) {
           setCurrentPayPeriod(null);
         }
-
-        // Refresh stats
-        const statistics = await payPeriodService.getPayPeriodStats(user.id);
-        setStats(statistics);
       } catch (err) {
         const errorMessage =
           err instanceof Error ? err.message : "Failed to delete pay period";
@@ -320,12 +306,12 @@ export function usePayPeriods(
     [user, payPeriodService, currentPayPeriod]
   );
 
-  // Set up real-time subscriptions
+  // Subscribe to real-time updates
   useEffect(() => {
     if (!user || !autoRefresh) return;
 
-    const subscription = supabase
-      .channel("pay_periods_changes")
+    const channel = supabase
+      .channel(`pay_periods:${user.id}`)
       .on(
         "postgres_changes",
         {
@@ -334,19 +320,19 @@ export function usePayPeriods(
           table: "pay_periods",
           filter: `user_id=eq.${user.id}`,
         },
-        async () => {
+        () => {
           // Refresh data when changes occur
-          await fetchPayPeriods();
+          fetchPayPeriods();
         }
       )
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
-  }, [user, autoRefresh, fetchPayPeriods, supabase]);
+  }, [user, autoRefresh, supabase, fetchPayPeriods]);
 
-  // Initial data fetch
+  // Initial fetch
   useEffect(() => {
     if (user) {
       fetchPayPeriods();
@@ -378,48 +364,63 @@ export function usePayPeriods(
   };
 }
 
-// Specialized hook for current pay period only
+/**
+ * Simplified hook for getting just the current pay period
+ */
 export function useCurrentPayPeriod() {
-  const { user } = useAuth();
-  const [currentPayPeriod, setCurrentPayPeriod] = useState<PayPeriod | null>(
-    null
-  );
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const payPeriodService = useMemo(() => new PayPeriodService(), []);
-
-  const fetchCurrentPayPeriod = useCallback(async () => {
-    if (!user) return;
-
-    try {
-      setError(null);
-      const current = await payPeriodService.getCurrentPayPeriod(user.id);
-      setCurrentPayPeriod(current);
-    } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Failed to fetch current pay period";
-      setError(errorMessage);
-      await logger.logUnhandledError(err as Error, user.id, {
-        context: "useCurrentPayPeriod.fetchCurrentPayPeriod",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user, payPeriodService]);
-
-  useEffect(() => {
-    if (user) {
-      fetchCurrentPayPeriod();
-    }
-  }, [user, fetchCurrentPayPeriod]);
+  const { currentPayPeriod, isLoading, error, refreshPayPeriods } =
+    usePayPeriods({
+      autoRefresh: true,
+    });
 
   return {
     currentPayPeriod,
     isLoading,
     error,
-    refetch: fetchCurrentPayPeriod,
+    refresh: refreshPayPeriods,
+  };
+}
+
+/**
+ * Hook for pay period generation operations
+ */
+export function usePayPeriodGeneration() {
+  const { generateNextPayPeriod, isGenerating, error, clearError } =
+    usePayPeriods({
+      autoRefresh: false,
+    });
+
+  return {
+    generateNextPayPeriod,
+    isGenerating,
+    error,
+    clearError,
+  };
+}
+
+/**
+ * Hook for pay period management operations
+ */
+export function usePayPeriodOperations() {
+  const {
+    updatePayPeriod,
+    completePayPeriod,
+    deletePayPeriod,
+    isUpdating,
+    error,
+    clearError,
+    refreshPayPeriods,
+  } = usePayPeriods({
+    autoRefresh: true,
+  });
+
+  return {
+    updatePayPeriod,
+    completePayPeriod,
+    deletePayPeriod,
+    isUpdating,
+    error,
+    clearError,
+    refresh: refreshPayPeriods,
   };
 }
