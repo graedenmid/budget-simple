@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PayPeriodSelector, AllocationList } from "@/components/allocations";
 import { PayPeriodStatusManager } from "@/components/pay-periods/pay-period-status-manager";
+import { BudgetBalanceDashboard } from "@/components/budget/budget-balance-dashboard";
 import { PayPeriod } from "@/lib/types/pay-periods";
 import { usePayPeriods } from "@/lib/hooks/use-pay-periods";
 
@@ -156,6 +157,14 @@ export default function PayPeriodsPage() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Budget Balance Overview */}
+      {selectedPayPeriod && (
+        <BudgetBalanceDashboard
+          payPeriodId={selectedPayPeriod.id}
+          compact={true}
+        />
       )}
 
       {/* Main Content Area */}

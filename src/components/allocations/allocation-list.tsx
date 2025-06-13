@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AllocationItem } from "./allocation-item";
 import { useAllocationsForPayPeriod } from "@/lib/hooks/use-allocations";
+import { useBudgetHealth } from "@/lib/hooks/use-budget-balance";
+import { BudgetHealthBadge } from "@/components/budget/budget-health-indicator";
 import { PayPeriod } from "@/lib/types/pay-periods";
 import { AllocationWithDetails } from "@/lib/types/allocations";
 
@@ -29,6 +31,9 @@ export function AllocationList({
   const { allocations, loading, error, refetch } = useAllocationsForPayPeriod(
     payPeriod?.id || null
   );
+
+  // Get budget health for this pay period
+  const { health } = useBudgetHealth(payPeriod?.id || null);
 
   // Determine if allocations should be disabled (pay period is completed)
   const isDisabled = payPeriod?.status === "COMPLETED";
@@ -166,9 +171,14 @@ export function AllocationList({
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Budget Overview</span>
-            <Badge variant="outline">
-              {summary.paidCount} of {allocations.length} items paid
-            </Badge>
+            <div className="flex items-center space-x-2">
+              {health && (
+                <BudgetHealthBadge health={health} variant="compact" />
+              )}
+              <Badge variant="outline">
+                {summary.paidCount} of {allocations.length} items paid
+              </Badge>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

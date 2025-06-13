@@ -10,10 +10,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { User, DollarSign, Target, TrendingUp, Calculator } from "lucide-react";
+import {
+  User,
+  DollarSign,
+  Target,
+  TrendingUp,
+  Calculator,
+  Activity,
+} from "lucide-react";
+import { BudgetHealthDashboard } from "@/components/budget/budget-health-indicator";
+import { usePayPeriods } from "@/lib/hooks/use-pay-periods";
+import { useBudgetHealth } from "@/lib/hooks/use-budget-balance";
 
 export default function DashboardPage() {
   const { user, loading } = useAuth();
+  const { payPeriods } = usePayPeriods();
+
+  // Get the most recent active pay period for budget health
+  const activePayPeriod =
+    payPeriods?.find((p) => p.status === "ACTIVE") || payPeriods?.[0];
+  const { health } = useBudgetHealth(activePayPeriod?.id || null);
 
   if (loading) {
     return (
@@ -76,6 +92,24 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Budget Health Overview */}
+          {activePayPeriod && health && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Activity className="mr-2 h-5 w-5" />
+                  Budget Health Overview
+                </CardTitle>
+                <CardDescription>
+                  Current budget status and health metrics
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BudgetHealthDashboard health={health} />
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Quick Actions */}
@@ -125,8 +159,8 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" disabled>
-                Coming in Phase 6
+              <Button asChild className="w-full">
+                <Link href="/pay-periods">Manage Pay Periods</Link>
               </Button>
             </CardContent>
           </Card>
