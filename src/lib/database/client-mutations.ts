@@ -4,6 +4,8 @@ import { Database } from "@/types/database";
 type Tables = Database["public"]["Tables"];
 type IncomeSourceInsert = Tables["income_sources"]["Insert"];
 type IncomeSourceUpdate = Tables["income_sources"]["Update"];
+type BudgetItemInsert = Tables["budget_items"]["Insert"];
+type BudgetItemUpdate = Tables["budget_items"]["Update"];
 
 // Income source mutations for client components
 export async function createIncomeSource(
@@ -98,4 +100,123 @@ export async function toggleIncomeSourceStatus(
   isActive: boolean
 ): Promise<boolean> {
   return isActive ? activateIncomeSource(id) : deactivateIncomeSource(id);
+}
+
+// Budget item mutations for client components
+export async function createBudgetItem(
+  budgetItem: BudgetItemInsert
+): Promise<string | null> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("budget_items")
+    .insert(budgetItem)
+    .select("id")
+    .single();
+
+  if (error) {
+    console.error("Error creating budget item:", error);
+    return null;
+  }
+
+  return data.id;
+}
+
+export async function updateBudgetItem(
+  id: string,
+  updates: BudgetItemUpdate
+): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("budget_items")
+    .update(updates)
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error updating budget item:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function deleteBudgetItem(id: string): Promise<boolean> {
+  const supabase = createClient();
+
+  // Soft delete by setting is_active to false
+  const { error } = await supabase
+    .from("budget_items")
+    .update({ is_active: false })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deleting budget item:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function activateBudgetItem(id: string): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("budget_items")
+    .update({ is_active: true, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error activating budget item:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function deactivateBudgetItem(id: string): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("budget_items")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deactivating budget item:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function toggleBudgetItemStatus(
+  id: string,
+  isActive: boolean
+): Promise<boolean> {
+  return isActive ? activateBudgetItem(id) : deactivateBudgetItem(id);
+}
+
+export async function updateBudgetItemPriorities(
+  budgetItems: { id: string; priority: number }[]
+): Promise<boolean> {
+  const supabase = createClient();
+
+  try {
+    for (const item of budgetItems) {
+      const { error } = await supabase
+        .from("budget_items")
+        .update({ priority: item.priority })
+        .eq("id", item.id);
+
+      if (error) {
+        console.error("Error updating budget item priority:", error);
+        return false;
+      }
+    }
+    return true;
+  } catch (error) {
+    console.error("Error updating budget item priorities:", error);
+    return false;
+  }
 }
