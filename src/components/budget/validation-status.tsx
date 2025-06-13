@@ -8,7 +8,7 @@ import {
   Info,
   Shield,
 } from "lucide-react";
-import { useBudgetValidation } from "@/hooks/use-budget-validation";
+import { useBudgetValidation } from "@/lib/hooks/use-budget-validation";
 import type { BudgetItem, IncomeSource } from "@/types/database";
 
 interface ValidationStatusProps {
