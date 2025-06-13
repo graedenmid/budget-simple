@@ -49,6 +49,13 @@ interface UsePayPeriodsReturn {
   ) => Promise<PayPeriod>;
   deletePayPeriod: (payPeriodId: string) => Promise<void>;
   clearError: () => void;
+
+  // Status management actions
+  reactivatePayPeriod: (payPeriodId: string) => Promise<PayPeriod>;
+  checkCanAutoComplete: (payPeriodId: string) => Promise<boolean>;
+  validatePayPeriodEditable: (
+    payPeriodId: string
+  ) => Promise<{ canEdit: boolean; reason?: string }>;
 }
 
 export function usePayPeriods(
@@ -109,7 +116,7 @@ export function usePayPeriods(
     } finally {
       setIsLoading(false);
     }
-  }, [user, filters, payPeriodService]);
+  }, [user, filters, payPeriodService, logger]);
 
   // Refresh pay periods
   const refreshPayPeriods = useCallback(async () => {
@@ -153,7 +160,7 @@ export function usePayPeriods(
         setIsGenerating(false);
       }
     },
-    [user, payPeriodService, fetchPayPeriods]
+    [user, payPeriodService, fetchPayPeriods, logger]
   );
 
   // Get pay period with details
@@ -180,7 +187,7 @@ export function usePayPeriods(
         return null;
       }
     },
-    [user, payPeriodService]
+    [user, payPeriodService, logger]
   );
 
   // Update pay period
@@ -306,6 +313,102 @@ export function usePayPeriods(
     [user, payPeriodService, currentPayPeriod]
   );
 
+  // Reactivate pay period
+  const reactivatePayPeriod = useCallback(
+    async (payPeriodId: string): Promise<PayPeriod> => {
+      if (!user) throw new Error("User not authenticated");
+
+      try {
+        setIsUpdating(true);
+        setError(null);
+
+        const reactivatedPayPeriod = await payPeriodService.reactivatePayPeriod(
+          payPeriodId,
+          user.id
+        );
+
+        // Update the pay period in our state
+        setPayPeriods((prev) =>
+          prev.map((p) => (p.id === payPeriodId ? reactivatedPayPeriod : p))
+        );
+
+        // Update current pay period if it's the one being reactivated
+        if (currentPayPeriod?.id === payPeriodId) {
+          setCurrentPayPeriod(reactivatedPayPeriod);
+        }
+
+        return reactivatedPayPeriod;
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Failed to reactivate pay period";
+        setError(errorMessage);
+        await logger.logUnhandledError(err as Error, user.id, {
+          context: "usePayPeriods.reactivatePayPeriod",
+          payPeriodId,
+        });
+        throw err;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [user, payPeriodService, currentPayPeriod]
+  );
+
+  // Check if pay period can auto-complete
+  const checkCanAutoComplete = useCallback(
+    async (payPeriodId: string): Promise<boolean> => {
+      try {
+        setError(null);
+        return await payPeriodService.canAutoComplete(payPeriodId);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Failed to check can auto complete";
+        setError(errorMessage);
+        if (user) {
+          await logger.logUnhandledError(err as Error, user.id, {
+            context: "usePayPeriods.checkCanAutoComplete",
+            payPeriodId,
+          });
+        }
+        return false;
+      }
+    },
+    [user, payPeriodService]
+  );
+
+  // Validate if pay period is editable
+  const validatePayPeriodEditable = useCallback(
+    async (
+      payPeriodId: string
+    ): Promise<{ canEdit: boolean; reason?: string }> => {
+      if (!user) return { canEdit: false, reason: "User not authenticated" };
+
+      try {
+        setError(null);
+        return await payPeriodService.validatePayPeriodEditable(
+          payPeriodId,
+          user.id
+        );
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Failed to validate pay period editable";
+        setError(errorMessage);
+        await logger.logUnhandledError(err as Error, user.id, {
+          context: "usePayPeriods.validatePayPeriodEditable",
+          payPeriodId,
+        });
+        return { canEdit: false, reason: errorMessage };
+      }
+    },
+    [user, payPeriodService]
+  );
+
   // Subscribe to real-time updates
   useEffect(() => {
     if (!user || !autoRefresh) return;
@@ -361,6 +464,11 @@ export function usePayPeriods(
     completePayPeriod,
     deletePayPeriod,
     clearError,
+
+    // Status management actions
+    reactivatePayPeriod,
+    checkCanAutoComplete,
+    validatePayPeriodEditable,
   };
 }
 

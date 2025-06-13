@@ -434,6 +434,201 @@ export class PayPeriodService {
   }
 
   /**
+   * Reactivate a completed pay period (mark as ACTIVE)
+   */
+  async reactivatePayPeriod(
+    payPeriodId: string,
+    userId: string
+  ): Promise<PayPeriod> {
+    try {
+      // First, check if there's already an active period for this income source
+      const payPeriod = await this.getPayPeriodWithDetails(payPeriodId, userId);
+      if (!payPeriod) {
+        throw new Error("Pay period not found");
+      }
+
+      // Check for existing active periods for the same income source
+      const existingActive = await this.supabase
+        .from("pay_periods")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("income_source_id", payPeriod.income_source_id)
+        .eq("status", "ACTIVE")
+        .neq("id", payPeriodId);
+
+      if (existingActive.data && existingActive.data.length > 0) {
+        throw new Error(
+          "Cannot reactivate: There is already an active pay period for this income source"
+        );
+      }
+
+      const updates: PayPeriodUpdate = {
+        status: "ACTIVE",
+        updated_at: new Date().toISOString(),
+      };
+
+      return await this.updatePayPeriod(payPeriodId, userId, updates);
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.reactivatePayPeriod",
+        payPeriodId,
+        userId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a pay period can be automatically completed
+   * Returns true if all allocations are PAID
+   */
+  async canAutoComplete(payPeriodId: string): Promise<boolean> {
+    try {
+      const { data: allocations, error } = await this.supabase
+        .from("allocations")
+        .select("status")
+        .eq("pay_period_id", payPeriodId);
+
+      if (error) {
+        throw handleDatabaseError(error, "Failed to check allocation status");
+      }
+
+      if (!allocations || allocations.length === 0) {
+        return false; // No allocations, can't auto-complete
+      }
+
+      // Check if all allocations are PAID
+      return allocations.every((allocation) => allocation.status === "PAID");
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.canAutoComplete",
+        payPeriodId,
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Auto-complete a pay period if all allocations are PAID
+   */
+  async tryAutoComplete(payPeriodId: string, userId: string): Promise<boolean> {
+    try {
+      const canComplete = await this.canAutoComplete(payPeriodId);
+      if (canComplete) {
+        await this.completePayPeriod(payPeriodId, userId);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.tryAutoComplete",
+        payPeriodId,
+        userId,
+      });
+      return false;
+    }
+  }
+
+  /**
+   * Validate if a pay period can be edited (must be ACTIVE)
+   */
+  async validatePayPeriodEditable(
+    payPeriodId: string,
+    userId: string
+  ): Promise<{ canEdit: boolean; reason?: string }> {
+    try {
+      const { data: payPeriod, error } = await this.supabase
+        .from("pay_periods")
+        .select("status")
+        .eq("id", payPeriodId)
+        .eq("user_id", userId)
+        .single();
+
+      if (error) {
+        return { canEdit: false, reason: "Pay period not found" };
+      }
+
+      if (payPeriod.status === "COMPLETED") {
+        return {
+          canEdit: false,
+          reason: "Cannot edit completed pay periods",
+        };
+      }
+
+      return { canEdit: true };
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.validatePayPeriodEditable",
+        payPeriodId,
+        userId,
+      });
+      return { canEdit: false, reason: "Validation error" };
+    }
+  }
+
+  /**
+   * Get all active pay periods for a user
+   */
+  async getActivePayPeriods(userId: string): Promise<PayPeriod[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from("pay_periods")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("status", "ACTIVE")
+        .order("start_date", { ascending: false });
+
+      if (error) {
+        throw handleDatabaseError(error, "Failed to fetch active pay periods");
+      }
+
+      return data || [];
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.getActivePayPeriods",
+        userId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get completed pay periods for a user
+   */
+  async getCompletedPayPeriods(
+    userId: string,
+    limit = 50,
+    offset = 0
+  ): Promise<PayPeriod[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from("pay_periods")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("status", "COMPLETED")
+        .order("start_date", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) {
+        throw handleDatabaseError(
+          error,
+          "Failed to fetch completed pay periods"
+        );
+      }
+
+      return data || [];
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.getCompletedPayPeriods",
+        userId,
+        limit,
+        offset,
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Get pay period statistics for a user
    */
   async getPayPeriodStats(
