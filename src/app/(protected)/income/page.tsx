@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,26 +40,83 @@ export default function IncomePage() {
   const [editingSource, setEditingSource] = useState<IncomeSource | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadIncomeSources = useCallback(async () => {
-    if (!user) return;
+  // Load income sources function (for manual calls)
+  const loadIncomeSources = async () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
-      const sources = await getAllIncomeSourcesForUser(user.id);
+      setError(null);
+
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), 10000)
+      );
+
+      const dataPromise = getAllIncomeSourcesForUser(user.id);
+
+      const sources = (await Promise.race([
+        dataPromise,
+        timeoutPromise,
+      ])) as IncomeSource[];
       setIncomeSources(sources);
     } catch (err) {
-      setError("Failed to load income sources");
       console.error("Error loading income sources:", err);
+      setError(
+        "Failed to load income sources. Please try refreshing the page."
+      );
+      setIncomeSources([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  };
 
+  // Effect to load data when user is available
   useEffect(() => {
-    if (user) {
-      loadIncomeSources();
+    const loadData = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Request timeout")), 10000)
+        );
+
+        const dataPromise = getAllIncomeSourcesForUser(user.id);
+
+        const sources = (await Promise.race([
+          dataPromise,
+          timeoutPromise,
+        ])) as IncomeSource[];
+        setIncomeSources(sources);
+      } catch (err) {
+        console.error("Error loading income sources:", err);
+        setError(
+          "Failed to load income sources. Please try refreshing the page."
+        );
+        setIncomeSources([]); // Set empty array on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Only load when we have a user and auth is not loading
+    if (user && !authLoading) {
+      loadData();
+    } else if (!authLoading && !user) {
+      // Auth finished loading but no user - clear loading state
+      setLoading(false);
     }
-  }, [user, loadIncomeSources]);
+  }, [user, authLoading]); // No external function dependencies
 
   const handleAddNew = () => {
     setEditingSource(null);
@@ -122,10 +179,14 @@ export default function IncomePage() {
     setEditingSource(null);
   };
 
-  if (authLoading || loading) {
+  // Show loading only when auth is loading OR when we have a user but data is loading
+  if (authLoading || (user && loading)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading income sources...</p>
+        </div>
       </div>
     );
   }
@@ -178,7 +239,19 @@ export default function IncomePage() {
             {/* Error Message */}
             {error && (
               <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-                <p className="text-sm text-red-600">{error}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-red-600">{error}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setError(null);
+                      loadIncomeSources();
+                    }}
+                  >
+                    Retry
+                  </Button>
+                </div>
               </div>
             )}
 
