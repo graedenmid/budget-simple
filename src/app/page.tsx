@@ -12,78 +12,30 @@ import {
   Smartphone,
   ArrowRight,
   CheckCircle,
-  LayoutDashboard,
 } from "lucide-react";
 
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  // Auto-redirect authenticated users to dashboard
+  // Auto-redirect authenticated users to dashboard immediately
   useEffect(() => {
     if (!loading && user) {
-      router.push("/dashboard");
+      // Use replace to avoid adding to browser history
+      router.replace("/dashboard");
     }
   }, [user, loading, router]);
 
-  // Show loading while checking auth status
-  if (loading) {
+  // Show minimal loading while auth is being checked or user is being redirected
+  if (loading || user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
-  // If user is authenticated, show dashboard redirect (fallback in case auto-redirect doesn't work)
-  if (user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <header className="container mx-auto px-4 py-6">
-          <nav className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Calculator className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">
-                Budget Simple
-              </span>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button asChild>
-                <Link href="/dashboard">
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Go to Dashboard
-                </Link>
-              </Button>
-            </div>
-          </nav>
-        </header>
-
-        <main className="container mx-auto px-4 py-16">
-          <div className="text-center max-w-2xl mx-auto">
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">
-              Welcome back!
-            </h1>
-            <p className="text-xl text-gray-600 mb-8">
-              You&apos;re already signed in. Access your dashboard to manage
-              your budget and finances.
-            </p>
-            <Button asChild size="lg" className="text-lg px-8 py-3">
-              <Link href="/dashboard">
-                <LayoutDashboard className="mr-2 h-5 w-5" />
-                Continue to Dashboard
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Link>
-            </Button>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // Default landing page for non-authenticated users
+  // Only show marketing landing page for confirmed non-authenticated users
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
