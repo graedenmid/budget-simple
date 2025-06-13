@@ -148,3 +148,123 @@ export interface PayPeriodListAPIResponse {
   limit?: number;
   error?: string;
 }
+
+// Historical and Reconciliation Types
+export interface PayPeriodHistoryItem extends PayPeriod {
+  income_source_name: string;
+  income_source_cadence: IncomeCadence;
+  allocation_count: number;
+  paid_allocation_count: number;
+  completion_percentage: number;
+  variance_amount: number; // actual_net - expected_net
+  variance_percentage: number;
+}
+
+export interface PayPeriodHistoryFilters extends PayPeriodFilters {
+  completed_only?: boolean;
+  date_range?: "last_3_months" | "last_6_months" | "last_year" | "all_time";
+  sort_by?: "date" | "variance" | "completion";
+  sort_order?: "asc" | "desc";
+}
+
+export interface ReconciliationData {
+  pay_period_id: string;
+  start_date: Date;
+  end_date: Date;
+  expected_net: number;
+  actual_net: number | null;
+  net_variance: number;
+  net_variance_percentage: number;
+  allocations: ReconciliationAllocation[];
+  total_expected_allocations: number;
+  total_actual_allocations: number;
+  allocation_variance: number;
+  allocation_variance_percentage: number;
+  unallocated_amount: number;
+  reconciliation_status:
+    | "perfect"
+    | "minor_variance"
+    | "major_variance"
+    | "incomplete";
+}
+
+export interface ReconciliationAllocation {
+  id: string;
+  budget_item_id: string;
+  budget_item_name: string;
+  budget_item_category: string;
+  expected_amount: number;
+  actual_amount: number | null;
+  variance: number;
+  variance_percentage: number;
+  status: "PAID" | "UNPAID";
+}
+
+export interface HistoricalTrendData {
+  period: string; // Month/Quarter identifier
+  period_start: Date;
+  period_end: Date;
+  pay_periods_count: number;
+  total_expected_net: number;
+  total_actual_net: number;
+  net_variance: number;
+  completion_rate: number;
+  average_variance_percentage: number;
+  categories: HistoricalCategoryTrend[];
+}
+
+export interface HistoricalCategoryTrend {
+  category: string;
+  expected_amount: number;
+  actual_amount: number;
+  variance: number;
+  variance_percentage: number;
+}
+
+export interface ReconciliationSummary {
+  total_periods: number;
+  completed_periods: number;
+  perfect_reconciliations: number;
+  minor_variance_count: number;
+  major_variance_count: number;
+  average_net_variance: number;
+  average_allocation_variance: number;
+  total_unallocated: number;
+}
+
+export interface PayPeriodHistoryResponse {
+  data: PayPeriodHistoryItem[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: {
+    total_expected: number;
+    total_actual: number;
+    total_variance: number;
+    average_completion_rate: number;
+  };
+}
+
+// Date range utility type
+export interface DateRange {
+  start: Date;
+  end: Date;
+  label: string;
+}
+
+// Variance analysis thresholds
+export const VARIANCE_THRESHOLDS = {
+  PERFECT: 0,
+  MINOR: 0.05, // 5%
+  MAJOR: 0.15, // 15%
+} as const;
+
+export type VarianceLevel = "perfect" | "minor" | "major";
+
+export interface VarianceAnalysis {
+  level: VarianceLevel;
+  amount: number;
+  percentage: number;
+  color: string;
+  description: string;
+}

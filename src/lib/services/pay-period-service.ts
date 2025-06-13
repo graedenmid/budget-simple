@@ -8,6 +8,14 @@ import {
   PayPeriodGenerationResult,
   PayPeriodGenerationConfig,
   PayPeriodStats,
+  PayPeriodHistoryItem,
+  PayPeriodHistoryFilters,
+  PayPeriodHistoryResponse,
+  ReconciliationData,
+  ReconciliationAllocation,
+  ReconciliationSummary,
+  HistoricalTrendData,
+  VARIANCE_THRESHOLDS,
 } from "@/lib/types/pay-periods";
 import {
   calculateFirstPayPeriod,
@@ -700,6 +708,680 @@ export class PayPeriodService {
     } catch (error) {
       await logError(error as Error, {
         context: "PayPeriodService.getPayPeriodStats",
+        userId,
+        dateFrom,
+        dateTo,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get pay period history with enriched data for analysis
+   */
+  async getPayPeriodHistory(
+    filters: PayPeriodHistoryFilters
+  ): Promise<PayPeriodHistoryResponse> {
+    try {
+      let query = this.supabase
+        .from("pay_periods")
+        .select(
+          `
+          *,
+          income_source:income_sources!pay_periods_income_source_id_fkey(
+            name, cadence
+          ),
+          allocations:allocations(
+            id, status, expected_amount, actual_amount
+          )
+        `
+        )
+        .eq("user_id", filters.user_id);
+
+      // Apply filters
+      if (filters.status) {
+        query = query.eq("status", filters.status);
+      }
+
+      if (filters.completed_only) {
+        query = query.eq("status", "COMPLETED");
+      }
+
+      if (filters.income_source_id) {
+        query = query.eq("income_source_id", filters.income_source_id);
+      }
+
+      // Date range filtering
+      if (filters.date_range) {
+        const now = new Date();
+        let startDate: Date;
+
+        switch (filters.date_range) {
+          case "last_3_months":
+            startDate = new Date(now.setMonth(now.getMonth() - 3));
+            break;
+          case "last_6_months":
+            startDate = new Date(now.setMonth(now.getMonth() - 6));
+            break;
+          case "last_year":
+            startDate = new Date(now.setFullYear(now.getFullYear() - 1));
+            break;
+          default:
+            startDate = new Date("2000-01-01"); // All time
+        }
+
+        query = query.gte("start_date", startDate.toISOString());
+      }
+
+      if (filters.start_date_from) {
+        query = query.gte("start_date", filters.start_date_from.toISOString());
+      }
+
+      if (filters.start_date_to) {
+        query = query.lte("start_date", filters.start_date_to.toISOString());
+      }
+
+      // Sorting
+      const sortBy = filters.sort_by || "date";
+      const sortOrder = filters.sort_order || "desc";
+      const ascending = sortOrder === "asc";
+
+      if (sortBy === "date") {
+        query = query.order("start_date", { ascending });
+      }
+
+      // Apply pagination
+      const limit = filters.limit || 50;
+      const offset = filters.offset || 0;
+      query = query.range(offset, offset + limit - 1);
+
+      const { data: periods, error } = await query;
+
+      if (error) {
+        throw handleDatabaseError(error, "Failed to fetch pay period history");
+      }
+
+      if (!periods) {
+        return {
+          data: [],
+          total: 0,
+          page: Math.floor(offset / limit) + 1,
+          limit,
+          summary: {
+            total_expected: 0,
+            total_actual: 0,
+            total_variance: 0,
+            average_completion_rate: 0,
+          },
+        };
+      }
+
+      // Transform data to PayPeriodHistoryItem format
+      const historyItems: PayPeriodHistoryItem[] = periods.map((period) => {
+        type AllocationFromQuery = {
+          id: string;
+          status: "PAID" | "UNPAID";
+          expected_amount: number;
+          actual_amount: number | null;
+        };
+
+        const allocations = (period.allocations as AllocationFromQuery[]) || [];
+        const allocationCount = allocations.length;
+        const paidAllocationCount = allocations.filter(
+          (a) => a.status === "PAID"
+        ).length;
+        const completionPercentage =
+          allocationCount > 0
+            ? (paidAllocationCount / allocationCount) * 100
+            : 0;
+
+        const actualNet = period.actual_net || 0;
+        const varianceAmount = actualNet - period.expected_net;
+        const variancePercentage =
+          period.expected_net > 0
+            ? (varianceAmount / period.expected_net) * 100
+            : 0;
+
+        return {
+          ...period,
+          income_source_name: period.income_source?.name || "Unknown",
+          income_source_cadence: period.income_source?.cadence || "monthly",
+          allocation_count: allocationCount,
+          paid_allocation_count: paidAllocationCount,
+          completion_percentage: completionPercentage,
+          variance_amount: varianceAmount,
+          variance_percentage: variancePercentage,
+        };
+      });
+
+      // Calculate summary statistics
+      const totalExpected = historyItems.reduce(
+        (sum, item) => sum + item.expected_net,
+        0
+      );
+      const totalActual = historyItems.reduce(
+        (sum, item) => sum + (item.actual_net || 0),
+        0
+      );
+      const totalVariance = totalActual - totalExpected;
+      const averageCompletionRate =
+        historyItems.length > 0
+          ? historyItems.reduce(
+              (sum, item) => sum + item.completion_percentage,
+              0
+            ) / historyItems.length
+          : 0;
+
+      // Get total count for pagination (without limit)
+      let countQuery = this.supabase
+        .from("pay_periods")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", filters.user_id);
+
+      if (filters.status) {
+        countQuery = countQuery.eq("status", filters.status);
+      }
+      if (filters.completed_only) {
+        countQuery = countQuery.eq("status", "COMPLETED");
+      }
+
+      const { count } = await countQuery;
+
+      return {
+        data: historyItems,
+        total: count || 0,
+        page: Math.floor(offset / limit) + 1,
+        limit,
+        summary: {
+          total_expected: totalExpected,
+          total_actual: totalActual,
+          total_variance: totalVariance,
+          average_completion_rate: averageCompletionRate,
+        },
+      };
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.getPayPeriodHistory",
+        filters,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get detailed reconciliation data for a specific pay period
+   */
+  async getReconciliationData(
+    payPeriodId: string,
+    userId: string
+  ): Promise<ReconciliationData | null> {
+    try {
+      const { data: payPeriod, error: payPeriodError } = await this.supabase
+        .from("pay_periods")
+        .select("*")
+        .eq("id", payPeriodId)
+        .eq("user_id", userId)
+        .single();
+
+      if (payPeriodError) {
+        throw handleDatabaseError(
+          payPeriodError,
+          "Failed to fetch pay period for reconciliation"
+        );
+      }
+
+      if (!payPeriod) {
+        return null;
+      }
+
+      // Fetch allocations with budget item details
+      const { data: allocations, error: allocationsError } = await this.supabase
+        .from("allocations")
+        .select(
+          `
+          *,
+          budget_item:budget_items!allocations_budget_item_id_fkey(
+            id, name, category
+          )
+        `
+        )
+        .eq("pay_period_id", payPeriodId);
+
+      if (allocationsError) {
+        throw handleDatabaseError(
+          allocationsError,
+          "Failed to fetch allocations for reconciliation"
+        );
+      }
+
+      const allocationsList = allocations || [];
+
+      // Calculate net variance
+      const actualNet = payPeriod.actual_net || 0;
+      const netVariance = actualNet - payPeriod.expected_net;
+      const netVariancePercentage =
+        payPeriod.expected_net > 0
+          ? (netVariance / payPeriod.expected_net) * 100
+          : 0;
+
+      // Process allocations
+      const reconciliationAllocations: ReconciliationAllocation[] =
+        allocationsList.map((allocation) => {
+          const actualAmount = allocation.actual_amount || 0;
+          const variance = actualAmount - allocation.expected_amount;
+          const variancePercentage =
+            allocation.expected_amount > 0
+              ? (variance / allocation.expected_amount) * 100
+              : 0;
+
+          return {
+            id: allocation.id,
+            budget_item_id: allocation.budget_item_id,
+            budget_item_name: allocation.budget_item?.name || "Unknown",
+            budget_item_category: allocation.budget_item?.category || "Other",
+            expected_amount: allocation.expected_amount,
+            actual_amount: allocation.actual_amount,
+            variance,
+            variance_percentage: variancePercentage,
+            status: allocation.status,
+          };
+        });
+
+      // Calculate allocation totals
+      const totalExpectedAllocations = allocationsList.reduce(
+        (sum, allocation) => sum + allocation.expected_amount,
+        0
+      );
+      const totalActualAllocations = allocationsList.reduce(
+        (sum, allocation) => sum + (allocation.actual_amount || 0),
+        0
+      );
+      const allocationVariance =
+        totalActualAllocations - totalExpectedAllocations;
+      const allocationVariancePercentage =
+        totalExpectedAllocations > 0
+          ? (allocationVariance / totalExpectedAllocations) * 100
+          : 0;
+
+      // Calculate unallocated amount
+      const unallocatedAmount = actualNet - totalActualAllocations;
+
+      // Determine reconciliation status
+      let reconciliationStatus:
+        | "perfect"
+        | "minor_variance"
+        | "major_variance"
+        | "incomplete";
+
+      if (payPeriod.status !== "COMPLETED") {
+        reconciliationStatus = "incomplete";
+      } else {
+        const absVariancePercentage = Math.abs(netVariancePercentage);
+        if (absVariancePercentage <= VARIANCE_THRESHOLDS.PERFECT) {
+          reconciliationStatus = "perfect";
+        } else if (absVariancePercentage <= VARIANCE_THRESHOLDS.MINOR * 100) {
+          reconciliationStatus = "minor_variance";
+        } else {
+          reconciliationStatus = "major_variance";
+        }
+      }
+
+      return {
+        pay_period_id: payPeriodId,
+        start_date: new Date(payPeriod.start_date),
+        end_date: new Date(payPeriod.end_date),
+        expected_net: payPeriod.expected_net,
+        actual_net: payPeriod.actual_net,
+        net_variance: netVariance,
+        net_variance_percentage: netVariancePercentage,
+        allocations: reconciliationAllocations,
+        total_expected_allocations: totalExpectedAllocations,
+        total_actual_allocations: totalActualAllocations,
+        allocation_variance: allocationVariance,
+        allocation_variance_percentage: allocationVariancePercentage,
+        unallocated_amount: unallocatedAmount,
+        reconciliation_status: reconciliationStatus,
+      };
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.getReconciliationData",
+        payPeriodId,
+        userId,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get reconciliation summary statistics for a user's pay periods
+   */
+  async getReconciliationSummary(
+    userId: string,
+    dateFrom?: Date,
+    dateTo?: Date
+  ): Promise<ReconciliationSummary> {
+    try {
+      // Build query for pay periods
+      let periodsQuery = this.supabase
+        .from("pay_periods")
+        .select("*")
+        .eq("user_id", userId);
+
+      if (dateFrom) {
+        periodsQuery = periodsQuery.gte("start_date", dateFrom.toISOString());
+      }
+
+      if (dateTo) {
+        periodsQuery = periodsQuery.lte("start_date", dateTo.toISOString());
+      }
+
+      const { data: periods, error: periodsError } = await periodsQuery;
+
+      if (periodsError) {
+        throw handleDatabaseError(
+          periodsError,
+          "Failed to fetch pay periods for reconciliation summary"
+        );
+      }
+
+      const allPeriods = periods || [];
+      const completedPeriods = allPeriods.filter(
+        (p) => p.status === "COMPLETED"
+      );
+      const totalPeriods = allPeriods.length;
+      const completedPeriodsCount = completedPeriods.length;
+
+      // If no completed periods, return empty summary
+      if (completedPeriodsCount === 0) {
+        return {
+          total_periods: totalPeriods,
+          completed_periods: 0,
+          perfect_reconciliations: 0,
+          minor_variance_count: 0,
+          major_variance_count: 0,
+          average_net_variance: 0,
+          average_allocation_variance: 0,
+          total_unallocated: 0,
+        };
+      }
+
+      // Fetch allocations for completed periods
+      const completedPeriodIds = completedPeriods.map((p) => p.id);
+      const { data: allocations, error: allocationsError } = await this.supabase
+        .from("allocations")
+        .select("*")
+        .in("pay_period_id", completedPeriodIds);
+
+      if (allocationsError) {
+        throw handleDatabaseError(
+          allocationsError,
+          "Failed to fetch allocations for reconciliation summary"
+        );
+      }
+
+      const allAllocations = allocations || [];
+
+      // Calculate reconciliation statistics
+      let perfectReconciliations = 0;
+      let minorVarianceCount = 0;
+      let majorVarianceCount = 0;
+      let totalNetVariance = 0;
+      let totalAllocationVariance = 0;
+      let totalUnallocated = 0;
+
+      for (const period of completedPeriods) {
+        const actualNet = period.actual_net || 0;
+        const netVariance = actualNet - period.expected_net;
+        const netVariancePercentage =
+          period.expected_net > 0
+            ? Math.abs(netVariance / period.expected_net) * 100
+            : 0;
+
+        // Categorize variance level
+        if (netVariancePercentage <= VARIANCE_THRESHOLDS.PERFECT) {
+          perfectReconciliations++;
+        } else if (netVariancePercentage <= VARIANCE_THRESHOLDS.MINOR * 100) {
+          minorVarianceCount++;
+        } else {
+          majorVarianceCount++;
+        }
+
+        totalNetVariance += Math.abs(netVariance);
+
+        // Calculate allocation variance for this period
+        const periodAllocations = allAllocations.filter(
+          (a) => a.pay_period_id === period.id
+        );
+        const totalExpectedAllocations = periodAllocations.reduce(
+          (sum, a) => sum + a.expected_amount,
+          0
+        );
+        const totalActualAllocations = periodAllocations.reduce(
+          (sum, a) => sum + (a.actual_amount || 0),
+          0
+        );
+
+        const allocationVariance = Math.abs(
+          totalActualAllocations - totalExpectedAllocations
+        );
+        totalAllocationVariance += allocationVariance;
+
+        // Calculate unallocated amount
+        const unallocated = actualNet - totalActualAllocations;
+        totalUnallocated += Math.abs(unallocated);
+      }
+
+      // Calculate averages
+      const averageNetVariance = totalNetVariance / completedPeriodsCount;
+      const averageAllocationVariance =
+        totalAllocationVariance / completedPeriodsCount;
+
+      return {
+        total_periods: totalPeriods,
+        completed_periods: completedPeriodsCount,
+        perfect_reconciliations: perfectReconciliations,
+        minor_variance_count: minorVarianceCount,
+        major_variance_count: majorVarianceCount,
+        average_net_variance: averageNetVariance,
+        average_allocation_variance: averageAllocationVariance,
+        total_unallocated: totalUnallocated,
+      };
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.getReconciliationSummary",
+        userId,
+        dateFrom,
+        dateTo,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get historical trend data aggregated by month
+   */
+  async getHistoricalTrends(
+    userId: string,
+    dateFrom?: Date,
+    dateTo?: Date
+  ): Promise<HistoricalTrendData[]> {
+    try {
+      // Default to last 12 months if no date range provided
+      const defaultEndDate = new Date();
+      const defaultStartDate = new Date();
+      defaultStartDate.setMonth(defaultStartDate.getMonth() - 12);
+
+      const startDate = dateFrom || defaultStartDate;
+      const endDate = dateTo || defaultEndDate;
+
+      // Fetch pay periods in date range
+      const { data: periods, error: periodsError } = await this.supabase
+        .from("pay_periods")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("status", "COMPLETED")
+        .gte("start_date", startDate.toISOString())
+        .lte("start_date", endDate.toISOString())
+        .order("start_date", { ascending: true });
+
+      if (periodsError) {
+        throw handleDatabaseError(
+          periodsError,
+          "Failed to fetch pay periods for trends"
+        );
+      }
+
+      if (!periods || periods.length === 0) {
+        return [];
+      }
+
+      // Fetch allocations for all periods
+      const periodIds = periods.map((p) => p.id);
+      const { data: allocations, error: allocationsError } = await this.supabase
+        .from("allocations")
+        .select(
+          `
+          *,
+          budget_item:budget_items!allocations_budget_item_id_fkey(
+            category
+          )
+        `
+        )
+        .in("pay_period_id", periodIds);
+
+      if (allocationsError) {
+        throw handleDatabaseError(
+          allocationsError,
+          "Failed to fetch allocations for trends"
+        );
+      }
+
+      const allAllocations = allocations || [];
+
+      // Group periods by month
+      const monthlyData = new Map<
+        string,
+        {
+          periods: typeof periods;
+          month: Date;
+          periodStart: Date;
+          periodEnd: Date;
+        }
+      >();
+
+      periods.forEach((period) => {
+        const periodDate = new Date(period.start_date);
+        const monthKey = `${periodDate.getFullYear()}-${periodDate
+          .getMonth()
+          .toString()
+          .padStart(2, "0")}`;
+
+        if (!monthlyData.has(monthKey)) {
+          const monthStart = new Date(
+            periodDate.getFullYear(),
+            periodDate.getMonth(),
+            1
+          );
+          const monthEnd = new Date(
+            periodDate.getFullYear(),
+            periodDate.getMonth() + 1,
+            0
+          );
+
+          monthlyData.set(monthKey, {
+            periods: [],
+            month: monthStart,
+            periodStart: monthStart,
+            periodEnd: monthEnd,
+          });
+        }
+
+        monthlyData.get(monthKey)!.periods.push(period);
+      });
+
+      // Calculate trends for each month
+      const trends: HistoricalTrendData[] = [];
+
+      for (const [monthKey, monthData] of monthlyData) {
+        const monthPeriods = monthData.periods;
+        const monthAllocations = allAllocations.filter((a) =>
+          monthPeriods.some((p) => p.id === a.pay_period_id)
+        );
+
+        // Calculate totals
+        const totalExpectedNet = monthPeriods.reduce(
+          (sum, p) => sum + p.expected_net,
+          0
+        );
+        const totalActualNet = monthPeriods.reduce(
+          (sum, p) => sum + (p.actual_net || 0),
+          0
+        );
+        const netVariance = totalActualNet - totalExpectedNet;
+        const completionRate =
+          monthPeriods.length > 0
+            ? (monthPeriods.filter((p) => p.status === "COMPLETED").length /
+                monthPeriods.length) *
+              100
+            : 0;
+
+        const averageVariancePercentage =
+          totalExpectedNet > 0 ? (netVariance / totalExpectedNet) * 100 : 0;
+
+        // Calculate category trends
+        const categoryMap = new Map<
+          string,
+          {
+            expected: number;
+            actual: number;
+          }
+        >();
+
+        monthAllocations.forEach((allocation) => {
+          const category = allocation.budget_item?.category || "Other";
+
+          if (!categoryMap.has(category)) {
+            categoryMap.set(category, { expected: 0, actual: 0 });
+          }
+
+          const categoryData = categoryMap.get(category)!;
+          categoryData.expected += allocation.expected_amount;
+          categoryData.actual += allocation.actual_amount || 0;
+        });
+
+        const categories = Array.from(categoryMap.entries()).map(
+          ([category, data]) => ({
+            category,
+            expected_amount: data.expected,
+            actual_amount: data.actual,
+            variance: data.actual - data.expected,
+            variance_percentage:
+              data.expected > 0
+                ? ((data.actual - data.expected) / data.expected) * 100
+                : 0,
+          })
+        );
+
+        trends.push({
+          period: monthKey,
+          period_start: monthData.periodStart,
+          period_end: monthData.periodEnd,
+          pay_periods_count: monthPeriods.length,
+          total_expected_net: totalExpectedNet,
+          total_actual_net: totalActualNet,
+          net_variance: netVariance,
+          completion_rate: completionRate,
+          average_variance_percentage: averageVariancePercentage,
+          categories,
+        });
+      }
+
+      return trends.sort(
+        (a, b) => a.period_start.getTime() - b.period_start.getTime()
+      );
+    } catch (error) {
+      await logError(error as Error, {
+        context: "PayPeriodService.getHistoricalTrends",
         userId,
         dateFrom,
         dateTo,

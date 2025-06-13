@@ -156,7 +156,7 @@ This is Budget Simple, a web-based personal finance management application built
 
 - **NEVER run terminal commands automatically** - Always provide command prompts for the user to run manually
 - Write clear, complete commands with explanations
-- Do not ask permission to run commands - just provide them
+- NEVER ask permission to run commands - only provide them and ask me to run them
 - **Example Format**: "Please run: `npm run lint` to check for linter errors"
 
 ## Rule Compliance Checklist (MANDATORY BEFORE EVERY ACTION)
