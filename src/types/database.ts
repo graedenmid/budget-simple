@@ -236,6 +236,55 @@ export interface Database {
           updated_at?: string;
         };
       };
+      income_history: {
+        Row: {
+          id: string;
+          income_source_id: string;
+          user_id: string;
+          change_type: Database["public"]["Enums"]["income_change_type"];
+          name: string;
+          gross_amount: number;
+          net_amount: number;
+          cadence: Database["public"]["Enums"]["income_cadence"];
+          start_date: string;
+          is_active: boolean;
+          changed_fields: string[] | null;
+          previous_values: Json | null;
+          new_values: Json | null;
+          change_reason: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          income_source_id: string;
+          user_id: string;
+          change_type: Database["public"]["Enums"]["income_change_type"];
+          name: string;
+          gross_amount: number;
+          net_amount: number;
+          cadence: Database["public"]["Enums"]["income_cadence"];
+          start_date: string;
+          is_active: boolean;
+          changed_fields?: string[] | null;
+          previous_values?: Json | null;
+          new_values?: Json | null;
+          change_reason?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          change_type?: Database["public"]["Enums"]["income_change_type"];
+          name?: string;
+          gross_amount?: number;
+          net_amount?: number;
+          cadence?: Database["public"]["Enums"]["income_cadence"];
+          start_date?: string;
+          is_active?: boolean;
+          changed_fields?: string[] | null;
+          previous_values?: Json | null;
+          new_values?: Json | null;
+          change_reason?: string | null;
+        };
+      };
     };
     Views: {
       [_ in never]: never;
@@ -267,6 +316,12 @@ export interface Database {
       allocation_status: "PAID" | "UNPAID";
       expense_type: "BUDGET_PAYMENT" | "EXPENSE";
       suggestion_status: "PENDING" | "APPLIED";
+      income_change_type:
+        | "CREATED"
+        | "UPDATED"
+        | "ACTIVATED"
+        | "DEACTIVATED"
+        | "DELETED";
     };
     CompositeTypes: {
       [_ in never]: never;
@@ -283,6 +338,8 @@ export type PayPeriod = Database["public"]["Tables"]["pay_periods"]["Row"];
 export type Allocation = Database["public"]["Tables"]["allocations"]["Row"];
 export type Expense = Database["public"]["Tables"]["expenses"]["Row"];
 export type Suggestion = Database["public"]["Tables"]["suggestions"]["Row"];
+export type IncomeHistory =
+  Database["public"]["Tables"]["income_history"]["Row"];
 
 export type IncomeCadence = Database["public"]["Enums"]["income_cadence"];
 export type BudgetCategory = Database["public"]["Enums"]["budget_category"];
@@ -291,3 +348,5 @@ export type PayPeriodStatus = Database["public"]["Enums"]["pay_period_status"];
 export type AllocationStatus = Database["public"]["Enums"]["allocation_status"];
 export type ExpenseType = Database["public"]["Enums"]["expense_type"];
 export type SuggestionStatus = Database["public"]["Enums"]["suggestion_status"];
+export type IncomeChangeType =
+  Database["public"]["Enums"]["income_change_type"];

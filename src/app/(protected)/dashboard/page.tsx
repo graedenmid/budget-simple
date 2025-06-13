@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/lib/auth/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, DollarSign } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, signOut, loading } = useAuth();
@@ -92,14 +93,17 @@ export default function DashboardPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader>
-              <CardTitle>Income Sources</CardTitle>
+              <CardTitle className="flex items-center">
+                <DollarSign className="mr-2 h-5 w-5" />
+                Income Sources
+              </CardTitle>
               <CardDescription>
                 Manage your income and payment schedules
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" disabled>
-                Coming in Phase 4
+              <Button asChild className="w-full">
+                <Link href="/income">Manage Income Sources</Link>
               </Button>
             </CardContent>
           </Card>
@@ -133,22 +137,22 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Phase 3 Status */}
+        {/* Phase Status */}
         <Card className="mt-8">
           <CardHeader>
-            <CardTitle>Phase 3: Authentication & User Management ✅</CardTitle>
+            <CardTitle>Phase 4: Income Management System 🔄</CardTitle>
             <CardDescription>
-              Authentication system is now complete and functional
+              Building income source management functionality
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm">
-              <p>✅ User registration and login flows</p>
-              <p>✅ Password recovery functionality</p>
-              <p>✅ Protected route middleware</p>
-              <p>✅ User profile management</p>
-              <p>✅ JWT-based session management</p>
-              <p>🔄 Next: Income Management System (Phase 4)</p>
+              <p>✅ Phase 3: Authentication & User Management Complete</p>
+              <p>🔄 Income source management interface</p>
+              <p>⏳ Multiple income cadences support</p>
+              <p>⏳ Income validation logic</p>
+              <p>⏳ Dynamic calculation engine</p>
+              <p>⏳ Income history tracking</p>
             </div>
           </CardContent>
         </Card>
