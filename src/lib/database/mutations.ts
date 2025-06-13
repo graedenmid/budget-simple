@@ -92,6 +92,45 @@ export async function deleteIncomeSource(id: string): Promise<boolean> {
   return true;
 }
 
+export async function activateIncomeSource(id: string): Promise<boolean> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("income_sources")
+    .update({ is_active: true, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error activating income source:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function deactivateIncomeSource(id: string): Promise<boolean> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("income_sources")
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error deactivating income source:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function toggleIncomeSourceStatus(
+  id: string,
+  isActive: boolean
+): Promise<boolean> {
+  return isActive ? activateIncomeSource(id) : deactivateIncomeSource(id);
+}
+
 // Budget item mutations
 export async function createBudgetItem(
   budgetItem: BudgetItemInsert
