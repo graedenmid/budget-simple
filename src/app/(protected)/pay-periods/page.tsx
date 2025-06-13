@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CheckCircle2, Calendar, RefreshCw } from "lucide-react";
+import { CheckCircle2, Calendar, RefreshCw, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -66,6 +66,15 @@ export default function PayPeriodsPage() {
         </div>
 
         <div className="flex items-center space-x-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => (window.location.href = "/pay-periods/history")}
+            title="View History"
+          >
+            <History className="h-4 w-4 mr-2" />
+            History
+          </Button>
           <Button
             variant="outline"
             size="sm"
