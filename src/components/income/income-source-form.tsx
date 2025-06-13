@@ -26,7 +26,7 @@ import { useAuth } from "@/lib/auth/auth-context";
 import {
   createIncomeSource,
   updateIncomeSource,
-} from "@/lib/database/mutations";
+} from "@/lib/database/client-mutations";
 import { getCadenceOptions } from "@/lib/utils/cadence";
 import type { IncomeSource, IncomeCadence } from "@/types/database";
 

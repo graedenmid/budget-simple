@@ -20,11 +20,11 @@ import {
   PowerOff,
   History,
 } from "lucide-react";
-import { getAllIncomeSourcesForUser } from "@/lib/database/queries";
+import { getAllIncomeSourcesForUser } from "@/lib/database/client-queries";
 import {
   deleteIncomeSource,
   toggleIncomeSourceStatus,
-} from "@/lib/database/mutations";
+} from "@/lib/database/client-mutations";
 import type { IncomeSource } from "@/types/database";
 import { IncomeSourceForm } from "@/components/income/income-source-form";
 import { IncomeHistory } from "@/components/income/income-history";

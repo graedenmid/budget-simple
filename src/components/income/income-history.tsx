@@ -25,7 +25,7 @@ import {
 import {
   getIncomeHistoryForUser,
   getIncomeHistoryForSource,
-} from "@/lib/database/queries";
+} from "@/lib/database/client-queries";
 import type {
   IncomeHistory,
   IncomeSource,
