@@ -17,6 +17,8 @@ import {
   TrendingUp,
   Calculator,
   Activity,
+  BarChart3,
+  Lightbulb,
 } from "lucide-react";
 import { BudgetHealthDashboard } from "@/components/budget/budget-health-indicator";
 import { usePayPeriods } from "@/lib/hooks/use-pay-periods";
@@ -176,15 +178,35 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" disabled>
-                Coming in Phase 7
+              <Button asChild className="w-full">
+                <Link href="/expenses">Track Expenses</Link>
               </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle>Smart Recommendations</CardTitle>
+              <CardTitle className="flex items-center">
+                <BarChart3 className="mr-2 h-5 w-5" />
+                Analytics
+              </CardTitle>
+              <CardDescription>
+                View spending trends and budget insights
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button asChild className="w-full">
+                <Link href="/analytics">View Analytics</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Lightbulb className="mr-2 h-5 w-5" />
+                Smart Recommendations
+              </CardTitle>
               <CardDescription>
                 Get intelligent suggestions for surplus funds
               </CardDescription>
@@ -192,20 +214,6 @@ export default function DashboardPage() {
             <CardContent>
               <Button className="w-full" disabled>
                 Coming in Phase 8
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Analytics Dashboard</CardTitle>
-              <CardDescription>
-                View budget health and spending insights
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" disabled>
-                Coming in Phase 9
               </Button>
             </CardContent>
           </Card>
@@ -242,15 +250,15 @@ export default function DashboardPage() {
                 <span>Phase 5: Budget Item Configuration</span>
               </div>
               <div className="flex items-center space-x-2">
-                <span className="text-blue-600">🔄</span>
+                <span className="text-green-600">✅</span>
                 <span>Phase 6: Pay Period & Allocation Management</span>
               </div>
               <div className="flex items-center space-x-2">
-                <span className="text-gray-400">⏳</span>
+                <span className="text-green-600">✅</span>
                 <span>Phase 7: Expense Tracking System</span>
               </div>
               <div className="flex items-center space-x-2">
-                <span className="text-gray-400">⏳</span>
+                <span className="text-blue-600">🔄</span>
                 <span>Phase 8: Smart Recommendations Engine</span>
               </div>
               <div className="flex items-center space-x-2">
@@ -260,9 +268,9 @@ export default function DashboardPage() {
             </div>
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Currently Working On:</strong> Pay Period Management -
-                Implementing automatic pay period generation and allocation
-                calculations
+                <strong>Currently Working On:</strong> Smart Recommendations
+                Engine - Implementing intelligent surplus allocation suggestions
+                and leftover funds calculation
               </p>
             </div>
           </CardContent>

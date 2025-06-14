@@ -21,6 +21,9 @@ import {
   User,
   LogOut,
   ChevronDown,
+  Calendar,
+  BarChart3,
+  type LucideIcon,
 } from "lucide-react";
 
 export function Navigation() {
@@ -41,7 +44,13 @@ export function Navigation() {
     }
   };
 
-  const navigationItems = [
+  const navigationItems: Array<{
+    name: string;
+    href: string;
+    icon: LucideIcon;
+    description: string;
+    disabled?: boolean;
+  }> = [
     {
       name: "Dashboard",
       href: "/dashboard",
@@ -61,11 +70,22 @@ export function Navigation() {
       description: "Configure budget items",
     },
     {
+      name: "Pay Periods",
+      href: "/pay-periods",
+      icon: Calendar,
+      description: "Manage pay periods and allocations",
+    },
+    {
       name: "Expenses",
       href: "/expenses",
       icon: TrendingUp,
       description: "Track spending",
-      disabled: true, // Phase 7 - not yet implemented
+    },
+    {
+      name: "Analytics",
+      href: "/analytics",
+      icon: BarChart3,
+      description: "Expense analytics and reports",
     },
   ];
 
