@@ -84,31 +84,42 @@ export function usePayPeriods(
     setError(null);
   }, []);
 
-  // Fetch pay periods
+  // Fetch pay periods - stable reference to prevent infinite loops
   const fetchPayPeriods = useCallback(async () => {
     if (!user) return;
 
     try {
       setError(null);
+      console.log("🔄 Fetching pay periods for user:", user.id);
 
       const payPeriodFilters: PayPeriodFilters = {
         user_id: user.id,
         ...filters,
       };
 
-      const periods = await payPeriodService.getPayPeriods(payPeriodFilters);
+      console.time("⏱️ Pay periods fetch");
+
+      // Use Promise.all to fetch data in parallel instead of sequentially
+      const [periods, current, statistics] = await Promise.all([
+        payPeriodService.getPayPeriods(payPeriodFilters),
+        payPeriodService.getCurrentPayPeriod(user.id),
+        payPeriodService.getPayPeriodStats(user.id),
+      ]);
+
+      console.timeEnd("⏱️ Pay periods fetch");
+      console.log(
+        `✅ Loaded ${periods.length} pay periods, current: ${
+          current?.id || "none"
+        }`
+      );
+
       setPayPeriods(periods);
-
-      // Get current active pay period
-      const current = await payPeriodService.getCurrentPayPeriod(user.id);
       setCurrentPayPeriod(current);
-
-      // Get statistics
-      const statistics = await payPeriodService.getPayPeriodStats(user.id);
       setStats(statistics);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to fetch pay periods";
+      console.error("❌ Pay periods fetch failed:", err);
       setError(errorMessage);
       await logger.logUnhandledError(err as Error, user.id, {
         context: "usePayPeriods.fetchPayPeriods",
@@ -116,7 +127,7 @@ export function usePayPeriods(
     } finally {
       setIsLoading(false);
     }
-  }, [user, filters, payPeriodService]);
+  }, [user?.id, JSON.stringify(filters), payPeriodService]); // Stable dependencies
 
   // Refresh pay periods
   const refreshPayPeriods = useCallback(async () => {
@@ -409,38 +420,59 @@ export function usePayPeriods(
     [user, payPeriodService]
   );
 
-  // Subscribe to real-time updates
+  // Combined initial fetch and real-time subscription
   useEffect(() => {
-    if (!user || !autoRefresh) return;
+    if (!user) return;
 
-    const channel = supabase
-      .channel(`pay_periods:${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "pay_periods",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          // Refresh data when changes occur
-          fetchPayPeriods();
-        }
-      )
-      .subscribe();
+    // Initial fetch
+    fetchPayPeriods();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, autoRefresh, supabase, fetchPayPeriods]);
-
-  // Initial fetch
-  useEffect(() => {
-    if (user) {
-      fetchPayPeriods();
+    // Set up real-time subscription only if autoRefresh is enabled
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    if (autoRefresh) {
+      console.log("🔄 Setting up realtime subscription for pay periods");
+      try {
+        channel = supabase
+          .channel(`pay_periods:${user.id}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "*",
+              schema: "public",
+              table: "pay_periods",
+              filter: `user_id=eq.${user.id}`,
+            },
+            (payload) => {
+              console.log("📡 Pay periods realtime update:", payload);
+              // Use a timeout to debounce rapid changes
+              setTimeout(() => {
+                console.log("🔄 Refreshing pay periods due to realtime update");
+                fetchPayPeriods();
+              }, 1000); // Increased debounce time
+            }
+          )
+          .subscribe((status) => {
+            console.log("📡 Pay periods subscription status:", status);
+            if (status === "SUBSCRIBED") {
+              console.log("✅ Pay periods realtime subscription active");
+            }
+          });
+      } catch (error) {
+        console.warn("❌ Failed to set up realtime subscription:", error);
+      }
     }
-  }, [user, fetchPayPeriods]);
+
+    // Cleanup function
+    return () => {
+      if (channel) {
+        try {
+          supabase.removeChannel(channel);
+        } catch (error) {
+          console.warn("Failed to cleanup realtime subscription:", error);
+        }
+      }
+    };
+  }, [user, autoRefresh]); // Removed fetchPayPeriods from dependencies to prevent infinite loop
 
   return {
     // Data

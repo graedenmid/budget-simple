@@ -18,10 +18,20 @@ type ViewMode = "list" | "form";
 type SortBy = "name" | "priority" | "category" | "value" | "created_at";
 type SortOrder = "asc" | "desc";
 
-export function BudgetItemList() {
+interface BudgetItemListProps {
+  budgetItems?: BudgetItem[];
+  onRefresh?: () => void;
+}
+
+export function BudgetItemList({
+  budgetItems: propBudgetItems,
+  onRefresh,
+}: BudgetItemListProps = {}) {
   const { user } = useAuth();
-  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>(
+    propBudgetItems || []
+  );
+  const [loading, setLoading] = useState(!propBudgetItems);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
   const [activeTab, setActiveTab] = useState("all");
@@ -29,9 +39,17 @@ export function BudgetItemList() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [showInactive, setShowInactive] = useState(false);
 
-  // Load budget items
+  // Update local state when props change
+  useEffect(() => {
+    if (propBudgetItems) {
+      setBudgetItems(propBudgetItems);
+      setLoading(false);
+    }
+  }, [propBudgetItems]);
+
+  // Load budget items only if not provided via props
   const loadBudgetItems = useCallback(async () => {
-    if (!user) return;
+    if (!user || propBudgetItems) return; // Don't load if props provided
 
     setLoading(true);
     try {
@@ -42,18 +60,33 @@ export function BudgetItemList() {
     } finally {
       setLoading(false);
     }
-  }, [user, showInactive]);
+  }, [user, showInactive, propBudgetItems]);
 
   useEffect(() => {
     loadBudgetItems();
   }, [loadBudgetItems]);
 
-  // Filter items by category
+  // Helper function to check if budget item is active based on end_date
+  const isBudgetItemActive = (item: BudgetItem) => {
+    if (!item.end_date) return true; // No end date means active
+    const endDate = new Date(item.end_date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return endDate > today; // Active if end date is in the future
+  };
+
+  // Filter items by category and active status
   const getFilteredItems = () => {
     let filtered = budgetItems;
 
+    // Filter by active status first (based on end_date)
+    if (!showInactive) {
+      filtered = filtered.filter((item) => isBudgetItemActive(item));
+    }
+
+    // Then filter by category
     if (activeTab !== "all") {
-      filtered = budgetItems.filter((item) => item.category === activeTab);
+      filtered = filtered.filter((item) => item.category === activeTab);
     }
 
     // Sort items
@@ -89,7 +122,12 @@ export function BudgetItemList() {
   const handleFormSuccess = () => {
     setViewMode("list");
     setEditingItem(null);
-    loadBudgetItems();
+    // Use parent refresh if available, otherwise load items locally
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      loadBudgetItems();
+    }
   };
 
   const handleFormCancel = () => {
@@ -108,11 +146,13 @@ export function BudgetItemList() {
 
   const getCategoryCount = (category: string) => {
     if (category === "all") {
-      return budgetItems.filter((item) => showInactive || item.is_active)
-        .length;
+      return budgetItems.filter(
+        (item) => showInactive || isBudgetItemActive(item)
+      ).length;
     }
     return budgetItems.filter(
-      (item) => item.category === category && (showInactive || item.is_active)
+      (item) =>
+        item.category === category && (showInactive || isBudgetItemActive(item))
     ).length;
   };
 
@@ -265,7 +305,10 @@ export function BudgetItemList() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-blue-600">
-                  {budgetItems.filter((item) => item.is_active).length}
+                  {
+                    budgetItems.filter((item) => isBudgetItemActive(item))
+                      .length
+                  }
                 </div>
                 <div className="text-sm text-gray-600">Active Items</div>
               </div>

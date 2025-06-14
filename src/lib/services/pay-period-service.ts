@@ -387,27 +387,34 @@ export class PayPeriodService {
    */
   async getCurrentPayPeriod(userId: string): Promise<PayPeriod | null> {
     try {
+      // RLS will handle user filtering automatically, so we don't need .eq("user_id", userId)
       const { data, error } = await this.supabase
         .from("pay_periods")
         .select("*")
-        .eq("user_id", userId)
         .eq("status", "ACTIVE")
         .order("start_date", { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
 
       if (error && error.code !== "PGRST116") {
-        // PGRST116 is "no rows returned"
+        // PGRST116 is "no rows returned" - this is expected if no active periods
+        console.warn("No active pay periods found for user:", userId);
+        return null;
+      }
+
+      if (error) {
         throw handleDatabaseError(error, "Failed to fetch current pay period");
       }
 
-      return data || null;
+      // Return the first result or null if no data
+      return Array.isArray(data) ? data[0] || null : data || null;
     } catch (error) {
+      console.error("getCurrentPayPeriod failed:", error);
       await logError(error as Error, {
         context: "PayPeriodService.getCurrentPayPeriod",
         userId,
       });
-      throw error;
+      // Return null instead of throwing to prevent app crashes
+      return null;
     }
   }
 
