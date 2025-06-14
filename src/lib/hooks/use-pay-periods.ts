@@ -116,7 +116,7 @@ export function usePayPeriods(
     } finally {
       setIsLoading(false);
     }
-  }, [user, filters, payPeriodService, logger]);
+  }, [user, filters, payPeriodService]);
 
   // Refresh pay periods
   const refreshPayPeriods = useCallback(async () => {
@@ -160,7 +160,7 @@ export function usePayPeriods(
         setIsGenerating(false);
       }
     },
-    [user, payPeriodService, fetchPayPeriods, logger]
+    [user, payPeriodService, fetchPayPeriods]
   );
 
   // Get pay period with details
@@ -187,7 +187,7 @@ export function usePayPeriods(
         return null;
       }
     },
-    [user, payPeriodService, logger]
+    [user, payPeriodService]
   );
 
   // Update pay period
