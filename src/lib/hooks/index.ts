@@ -23,3 +23,11 @@ export {
   useReconciliationSummary,
   useHistoricalTrends,
 } from "./use-pay-period-history";
+export {
+  useExpenses,
+  useExpenseOperations,
+  useExpenseSummary,
+  usePayPeriodExpenses,
+  useBudgetItemExpenses,
+  useExpenseValidation,
+} from "./use-expenses";
