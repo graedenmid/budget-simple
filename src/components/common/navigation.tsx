@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { Button } from "@/components/ui/button";
@@ -29,17 +29,16 @@ import {
 export function Navigation() {
   const { user, signOut } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleSignOut = async () => {
     try {
       setIsLoggingOut(true);
       await signOut();
-      router.push("/");
+      // Force a page refresh and redirect to home after successful sign out
+      window.location.href = "/";
     } catch (error) {
       console.error("Failed to sign out:", error);
-    } finally {
       setIsLoggingOut(false);
     }
   };
