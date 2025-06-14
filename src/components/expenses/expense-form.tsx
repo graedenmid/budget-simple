@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Loader2, Save, X } from "lucide-react";
 import { CategorySelector } from "./category-selector";
+import { BudgetItemSelector } from "./budget-item-selector";
 import { useExpenseOperations } from "@/lib/hooks/use-expenses";
 import { ExpenseCreateData } from "@/lib/types/expenses";
 
@@ -31,11 +32,13 @@ export function ExpenseForm({ onSuccess, onCancel }: ExpenseFormProps) {
       date: new Date().toISOString().split("T")[0], // Today's date
       description: "",
       category: "",
+      budget_item_id: undefined,
       type: "EXPENSE",
     },
   });
 
   const selectedCategory = watch("category");
+  const selectedBudgetItem = watch("budget_item_id");
 
   const onSubmit = async (data: ExpenseCreateData) => {
     try {
@@ -59,7 +62,15 @@ export function ExpenseForm({ onSuccess, onCancel }: ExpenseFormProps) {
         return;
       }
 
-      const result = await createExpense(data);
+      // If budget item is selected, mark as budget payment
+      const expenseData: ExpenseCreateData = {
+        ...data,
+        type: data.budget_item_id
+          ? ("BUDGET_PAYMENT" as const)
+          : ("EXPENSE" as const),
+      };
+
+      const result = await createExpense(expenseData);
       if (result) {
         onSuccess();
       }
@@ -156,6 +167,22 @@ export function ExpenseForm({ onSuccess, onCancel }: ExpenseFormProps) {
             {!selectedCategory && (
               <p className="text-sm text-red-600">Category is required</p>
             )}
+          </div>
+
+          {/* Budget Item Linking */}
+          <div className="space-y-2">
+            <Label>Budget Item (Optional)</Label>
+            <BudgetItemSelector
+              value={selectedBudgetItem || undefined}
+              onValueChange={(value) =>
+                setValue("budget_item_id", value || undefined)
+              }
+              placeholder="Link to a budget item to track spending..."
+            />
+            <p className="text-sm text-gray-600">
+              Link this expense to a budget item to track your actual spending
+              against your planned budget.
+            </p>
           </div>
 
           {/* Actions */}

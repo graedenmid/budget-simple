@@ -15,7 +15,9 @@ import { Separator } from "@/components/ui/separator";
 import { AllocationItem } from "./allocation-item";
 import { useAllocationsForPayPeriod } from "@/lib/hooks/use-allocations";
 import { useBudgetHealth } from "@/lib/hooks/use-budget-balance";
+import { useBudgetItemSpending } from "@/lib/hooks/use-budget-tracking";
 import { BudgetHealthBadge } from "@/components/budget/budget-health-indicator";
+import { QuickSpendingStatus } from "@/components/budget/budget-item-spending-indicator";
 import { PayPeriod } from "@/lib/types/pay-periods";
 import { AllocationWithDetails } from "@/lib/types/allocations";
 
@@ -34,6 +36,11 @@ export function AllocationList({
 
   // Get budget health for this pay period
   const { health } = useBudgetHealth(payPeriod?.id || null);
+
+  // Get budget item spending data for this pay period
+  const { spendingData: budgetSpending } = useBudgetItemSpending(
+    payPeriod?.id || null
+  );
 
   // Determine if allocations should be disabled (pay period is completed)
   const isDisabled = payPeriod?.status === "COMPLETED";
@@ -267,18 +274,38 @@ export function AllocationList({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {categoryAllocations.map((allocation, index) => (
-                  <div key={allocation.id}>
-                    <AllocationItem
-                      allocation={allocation}
-                      onUpdate={handleAllocationUpdate}
-                      disabled={isDisabled}
-                    />
-                    {index < categoryAllocations.length - 1 && (
-                      <Separator className="my-3" />
-                    )}
-                  </div>
-                ))}
+                {categoryAllocations.map((allocation, index) => {
+                  // Find spending data for this budget item
+                  const spendingInfo = budgetSpending?.find(
+                    (spending) =>
+                      spending.budget_item_id === allocation.budget_item_id
+                  );
+
+                  return (
+                    <div key={allocation.id}>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <AllocationItem
+                            allocation={allocation}
+                            onUpdate={handleAllocationUpdate}
+                            disabled={isDisabled}
+                          />
+                        </div>
+                        {spendingInfo && (
+                          <div className="flex-shrink-0 pt-2">
+                            <QuickSpendingStatus
+                              spending={spendingInfo}
+                              showAmount={true}
+                            />
+                          </div>
+                        )}
+                      </div>
+                      {index < categoryAllocations.length - 1 && (
+                        <Separator className="my-3" />
+                      )}
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
           )
