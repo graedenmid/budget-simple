@@ -66,7 +66,22 @@ const baseBudgetItemSchema = z.object({
     .max(1000, "Priority cannot exceed 1000")
     .default(0),
 
-  is_active: z.boolean().default(true),
+  end_date: z
+    .string()
+    .optional()
+    .nullable()
+    .refine(
+      (date) => {
+        if (!date) return true; // null/undefined is valid (ongoing)
+        const parsedDate = new Date(date);
+        return !isNaN(parsedDate.getTime());
+      },
+      {
+        message: "Invalid date format",
+      }
+    ),
+
+  is_active: z.boolean().default(true), // Computed from end_date
 });
 
 // Budget item form validation schema with refinements

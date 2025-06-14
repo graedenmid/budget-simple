@@ -48,11 +48,22 @@ const incomeSourceSchema = z
       "annual",
     ]),
     start_date: z.string().min(1, "Start date is required"),
+    end_date: z.string().optional(),
   })
   .refine((data) => data.net_amount <= data.gross_amount, {
     message: "Net amount cannot be greater than gross amount",
     path: ["net_amount"],
-  });
+  })
+  .refine(
+    (data) => {
+      if (!data.end_date) return true; // End date is optional
+      return new Date(data.end_date) >= new Date(data.start_date);
+    },
+    {
+      message: "End date cannot be before start date",
+      path: ["end_date"],
+    }
+  );
 
 type IncomeSourceFormData = z.infer<typeof incomeSourceSchema>;
 
@@ -86,9 +97,11 @@ export function IncomeSourceForm({
           net_amount: incomeSource.net_amount,
           cadence: incomeSource.cadence,
           start_date: incomeSource.start_date,
+          end_date: incomeSource.end_date || "",
         }
       : {
           start_date: new Date().toISOString().split("T")[0], // Today's date
+          end_date: "",
         },
   });
 
@@ -105,32 +118,44 @@ export function IncomeSourceForm({
       setIsSubmitting(true);
       setError(null);
 
+      // Add timeout protection at component level
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Request timeout - please try again")),
+          15000
+        )
+      );
+
       if (incomeSource) {
-        // Update existing income source
-        const success = await updateIncomeSource(incomeSource.id, {
+        // Update existing income source with timeout
+        const updatePromise = updateIncomeSource(incomeSource.id, {
           name: data.name,
           gross_amount: data.gross_amount,
           net_amount: data.net_amount,
           cadence: data.cadence,
           start_date: data.start_date,
+          end_date: data.end_date || null,
           updated_at: new Date().toISOString(),
         });
 
+        const success = await Promise.race([updatePromise, timeoutPromise]);
         if (!success) {
           throw new Error("Failed to update income source");
         }
       } else {
-        // Create new income source
-        const id = await createIncomeSource({
+        // Create new income source with timeout
+        const createPromise = createIncomeSource({
           user_id: user.id,
           name: data.name,
           gross_amount: data.gross_amount,
           net_amount: data.net_amount,
           cadence: data.cadence,
           start_date: data.start_date,
+          end_date: data.end_date || null,
           is_active: true,
         });
 
+        const id = await Promise.race([createPromise, timeoutPromise]);
         if (!id) {
           throw new Error("Failed to create income source");
         }
@@ -255,6 +280,24 @@ export function IncomeSourceForm({
               <p className="text-sm text-red-600">
                 {errors.start_date.message}
               </p>
+            )}
+          </div>
+
+          {/* End Date */}
+          <div className="space-y-2">
+            <Label htmlFor="end_date">End Date (Optional)</Label>
+            <Input
+              id="end_date"
+              type="date"
+              {...register("end_date")}
+              placeholder="Leave empty if ongoing"
+            />
+            <p className="text-xs text-gray-500">
+              Set an end date if this income source has ended (e.g., job change,
+              contract completion)
+            </p>
+            {errors.end_date && (
+              <p className="text-sm text-red-600">{errors.end_date.message}</p>
             )}
           </div>
 

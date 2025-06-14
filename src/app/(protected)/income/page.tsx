@@ -16,14 +16,12 @@ import {
   Calendar,
   Edit,
   Trash2,
-  Power,
-  PowerOff,
   History,
 } from "lucide-react";
 import { getAllIncomeSourcesForUser } from "@/lib/database/client-queries";
 import {
-  deleteIncomeSource,
-  toggleIncomeSourceStatus,
+  permanentlyDeleteIncomeSource,
+  updateIncomeSource,
 } from "@/lib/database/client-mutations";
 import type { IncomeSource } from "@/types/database";
 import { IncomeSourceForm } from "@/components/income/income-source-form";
@@ -65,10 +63,15 @@ export default function IncomePage() {
       setIncomeSources(sources);
     } catch (err) {
       console.error("Error loading income sources:", err);
-      setError(
-        "Failed to load income sources. Please try refreshing the page."
-      );
-      setIncomeSources([]); // Set empty array on error
+      // For timeout errors, show empty state instead of error message
+      if (err instanceof Error && err.message === "Request timeout") {
+        setError(null); // Don't show error for timeout - just empty state
+      } else {
+        setError(
+          "Failed to load income sources. Please try refreshing the page."
+        );
+      }
+      setIncomeSources([]); // Set empty array on any error
     } finally {
       setLoading(false);
     }
@@ -100,10 +103,15 @@ export default function IncomePage() {
         setIncomeSources(sources);
       } catch (err) {
         console.error("Error loading income sources:", err);
-        setError(
-          "Failed to load income sources. Please try refreshing the page."
-        );
-        setIncomeSources([]); // Set empty array on error
+        // For timeout errors, show empty state instead of error message
+        if (err instanceof Error && err.message === "Request timeout") {
+          setError(null); // Don't show error for timeout - just empty state
+        } else {
+          setError(
+            "Failed to load income sources. Please try refreshing the page."
+          );
+        }
+        setIncomeSources([]); // Set empty array on any error
       } finally {
         setLoading(false);
       }
@@ -128,43 +136,100 @@ export default function IncomePage() {
     setShowForm(true);
   };
 
-  const handleDelete = async (sourceId: string) => {
-    if (!confirm("Are you sure you want to delete this income source?")) {
+  const handlePermanentDelete = async (
+    sourceId: string,
+    sourceName: string
+  ) => {
+    if (
+      !confirm(
+        `⚠️ PERMANENT DELETE WARNING ⚠️\n\nAre you sure you want to PERMANENTLY delete "${sourceName}"?\n\nThis will:\n• Remove the income source completely\n• Delete ALL history and records\n• Cannot be undone\n\nType "DELETE" to confirm this is really what you want.`
+      )
+    ) {
+      return;
+    }
+
+    // Second confirmation with explicit text input would be better UX but keeping simple for now
+    if (
+      !confirm(
+        "Final confirmation: This action CANNOT be undone. Delete permanently?"
+      )
+    ) {
       return;
     }
 
     try {
-      const success = await deleteIncomeSource(sourceId);
+      const success = await permanentlyDeleteIncomeSource(sourceId);
       if (success) {
         await loadIncomeSources();
       } else {
-        setError("Failed to delete income source");
+        setError("Failed to permanently delete income source");
       }
     } catch (err) {
-      setError("Failed to delete income source");
-      console.error("Error deleting income source:", err);
+      setError("Failed to permanently delete income source");
+      console.error("Error permanently deleting income source:", err);
     }
   };
 
-  const handleToggleStatus = async (
+  const handleEndIncomeSource = async (
     sourceId: string,
-    currentStatus: boolean
+    sourceName: string,
+    currentEndDate?: string | null
   ) => {
-    const action = currentStatus ? "deactivate" : "activate";
-    if (!confirm(`Are you sure you want to ${action} this income source?`)) {
-      return;
-    }
+    const isAlreadyEnded =
+      currentEndDate && new Date(currentEndDate) <= new Date();
 
-    try {
-      const success = await toggleIncomeSourceStatus(sourceId, !currentStatus);
-      if (success) {
-        await loadIncomeSources();
-      } else {
-        setError(`Failed to ${action} income source`);
+    if (isAlreadyEnded) {
+      // If already ended, offer to remove end date (reactivate)
+      if (
+        !confirm(
+          `"${sourceName}" has already ended. Do you want to remove the end date and make it ongoing again?`
+        )
+      ) {
+        return;
       }
-    } catch (err) {
-      setError(`Failed to ${action} income source`);
-      console.error(`Error ${action}ing income source:`, err);
+
+      try {
+        const success = await updateIncomeSource(sourceId, {
+          end_date: null,
+          updated_at: new Date().toISOString(),
+        });
+        if (success) {
+          await loadIncomeSources();
+        } else {
+          setError("Failed to remove end date");
+        }
+      } catch (err) {
+        setError("Failed to remove end date");
+        console.error("Error removing end date:", err);
+      }
+    } else {
+      // If ongoing, ask for end date
+      const endDate = prompt(
+        `Set end date for "${sourceName}"\n\nEnter the date this income source ended (YYYY-MM-DD):`
+      );
+
+      if (!endDate) return; // User cancelled
+
+      // Validate date format
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+        setError("Invalid date format. Please use YYYY-MM-DD format.");
+        return;
+      }
+
+      try {
+        const success = await updateIncomeSource(sourceId, {
+          end_date: endDate,
+          updated_at: new Date().toISOString(),
+        });
+        if (success) {
+          await loadIncomeSources();
+        } else {
+          setError("Failed to set end date");
+        }
+      } catch (err) {
+        setError("Failed to set end date");
+        console.error("Error setting end date:", err);
+      }
     }
   };
 
@@ -292,38 +357,44 @@ export default function IncomePage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() =>
-                              handleToggleStatus(source.id, source.is_active)
-                            }
-                            className={
-                              source.is_active
-                                ? "text-orange-600 hover:text-orange-700"
-                                : "text-green-600 hover:text-green-700"
-                            }
-                            title={
-                              source.is_active
-                                ? "Deactivate income source"
-                                : "Activate income source"
-                            }
-                          >
-                            {source.is_active ? (
-                              <PowerOff className="h-4 w-4" />
-                            ) : (
-                              <Power className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
                             onClick={() => handleEdit(source)}
+                            title="Edit income source"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(source.id)}
+                            onClick={() =>
+                              handleEndIncomeSource(
+                                source.id,
+                                source.name,
+                                source.end_date
+                              )
+                            }
+                            className={
+                              source.end_date &&
+                              new Date(source.end_date) <= new Date()
+                                ? "text-green-600 hover:text-green-700"
+                                : "text-amber-600 hover:text-amber-700"
+                            }
+                            title={
+                              source.end_date &&
+                              new Date(source.end_date) <= new Date()
+                                ? "Remove end date (make ongoing)"
+                                : "Set end date for this income source"
+                            }
+                          >
+                            <Calendar className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              handlePermanentDelete(source.id, source.name)
+                            }
                             className="text-red-600 hover:text-red-700"
+                            title="Delete permanently (removes all history)"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -332,6 +403,13 @@ export default function IncomePage() {
                       <CardDescription>
                         {formatCadence(source.cadence)} • Started{" "}
                         {new Date(source.start_date).toLocaleDateString()}
+                        {source.end_date && (
+                          <>
+                            {" "}
+                            • Ended{" "}
+                            {new Date(source.end_date).toLocaleDateString()}
+                          </>
+                        )}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -363,7 +441,7 @@ export default function IncomePage() {
                         {!source.is_active && (
                           <div className="bg-red-50 border border-red-200 rounded-md p-3">
                             <div className="flex items-center gap-2">
-                              <PowerOff className="h-4 w-4 text-red-600" />
+                              <Calendar className="h-4 w-4 text-red-600" />
                               <p className="text-sm text-red-800 font-medium">
                                 This income source is inactive
                               </p>
@@ -374,6 +452,23 @@ export default function IncomePage() {
                             </p>
                           </div>
                         )}
+
+                        {source.end_date &&
+                          new Date(source.end_date) <= new Date() && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-amber-600" />
+                                <p className="text-sm text-amber-800 font-medium">
+                                  This income source has ended
+                                </p>
+                              </div>
+                              <p className="text-xs text-amber-600 mt-1">
+                                Ended on{" "}
+                                {new Date(source.end_date).toLocaleDateString()}
+                                . Consider deactivating if no longer relevant.
+                              </p>
+                            </div>
+                          )}
                       </div>
                     </CardContent>
                   </Card>

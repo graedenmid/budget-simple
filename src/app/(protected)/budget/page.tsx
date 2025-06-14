@@ -42,14 +42,38 @@ export default function BudgetPage() {
 
       try {
         setIsLoading(true);
-        const [items, sources] = await Promise.all([
+        console.log("🔄 Starting budget data load for user:", user.id);
+
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Request timeout")), 10000)
+        );
+
+        console.time("⏱️ Budget data load");
+        const dataPromise = Promise.all([
           getBudgetItemsForUser(user.id, true),
           getIncomeSourcesForUser(user.id),
         ]);
-        setBudgetItems(items);
-        setIncomeSources(sources);
+
+        const [items, sources] = (await Promise.race([
+          dataPromise,
+          timeoutPromise,
+        ])) as [BudgetItem[], IncomeSource[]];
+
+        console.timeEnd("⏱️ Budget data load");
+        console.log(
+          `✅ Loaded ${items?.length || 0} budget items, ${
+            sources?.length || 0
+          } income sources`
+        );
+
+        setBudgetItems(items || []);
+        setIncomeSources(sources || []);
       } catch (error) {
-        console.error("Failed to load data:", error);
+        console.error("❌ Failed to load budget data:", error);
+        // Set empty arrays on error to show empty state instead of infinite loading
+        setBudgetItems([]);
+        setIncomeSources([]);
       } finally {
         setIsLoading(false);
       }
@@ -198,7 +222,16 @@ export default function BudgetPage() {
             </TabsList>
 
             <TabsContent value="overview" className="space-y-6">
-              <BudgetItemList />
+              <div className="mb-4 text-center">
+                <p className="text-gray-600">
+                  Budget items: {budgetItems?.length || 0} | Income sources:{" "}
+                  {incomeSources?.length || 0}
+                </p>
+              </div>
+              <BudgetItemList
+                budgetItems={budgetItems}
+                onRefresh={handleDataRefresh}
+              />
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-6">

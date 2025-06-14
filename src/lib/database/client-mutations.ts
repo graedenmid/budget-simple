@@ -52,11 +52,28 @@ export async function deleteIncomeSource(id: string): Promise<boolean> {
   // Soft delete by setting is_active to false
   const { error } = await supabase
     .from("income_sources")
-    .update({ is_active: false })
+    .update({ is_active: false, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) {
-    console.error("Error deleting income source:", error);
+    console.error("Error deactivating income source:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function permanentlyDeleteIncomeSource(
+  id: string
+): Promise<boolean> {
+  const supabase = createClient();
+
+  // Hard delete - permanently removes the record and all history
+  // Note: This will cascade delete income_history due to foreign key constraints
+  const { error } = await supabase.from("income_sources").delete().eq("id", id);
+
+  if (error) {
+    console.error("Error permanently deleting income source:", error);
     return false;
   }
 
@@ -158,6 +175,23 @@ export async function deleteBudgetItem(id: string): Promise<boolean> {
   return true;
 }
 
+export async function permanentlyDeleteBudgetItem(
+  id: string
+): Promise<boolean> {
+  const supabase = createClient();
+
+  // Hard delete - permanently removes the record and all related data
+  // Note: This will cascade delete related allocations due to foreign key constraints
+  const { error } = await supabase.from("budget_items").delete().eq("id", id);
+
+  if (error) {
+    console.error("Error permanently deleting budget item:", error);
+    return false;
+  }
+
+  return true;
+}
+
 export async function activateBudgetItem(id: string): Promise<boolean> {
   const supabase = createClient();
 
@@ -219,4 +253,48 @@ export async function updateBudgetItemPriorities(
     console.error("Error updating budget item priorities:", error);
     return false;
   }
+}
+
+// Budget item end date operations
+export async function setBudgetItemEndDate(
+  id: string,
+  endDate: string
+): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("budget_items")
+    .update({
+      end_date: endDate,
+      is_active: false, // End date means inactive
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error setting budget item end date:", error);
+    return false;
+  }
+
+  return true;
+}
+
+export async function removeBudgetItemEndDate(id: string): Promise<boolean> {
+  const supabase = createClient();
+
+  const { error } = await supabase
+    .from("budget_items")
+    .update({
+      end_date: null,
+      is_active: true, // Remove end date means active
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Error removing budget item end date:", error);
+    return false;
+  }
+
+  return true;
 }

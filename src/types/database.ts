@@ -42,6 +42,7 @@ export interface Database {
           net_amount: number;
           cadence: Database["public"]["Enums"]["income_cadence"];
           start_date: string;
+          end_date: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -54,6 +55,7 @@ export interface Database {
           net_amount: number;
           cadence: Database["public"]["Enums"]["income_cadence"];
           start_date: string;
+          end_date?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -64,6 +66,7 @@ export interface Database {
           net_amount?: number;
           cadence?: Database["public"]["Enums"]["income_cadence"];
           start_date?: string;
+          end_date?: string | null;
           is_active?: boolean;
           updated_at?: string;
         };
@@ -79,6 +82,7 @@ export interface Database {
           cadence: Database["public"]["Enums"]["income_cadence"];
           depends_on: string[] | null;
           priority: number;
+          end_date: string | null;
           is_active: boolean;
           created_at: string;
           updated_at: string;
@@ -93,6 +97,7 @@ export interface Database {
           cadence: Database["public"]["Enums"]["income_cadence"];
           depends_on?: string[] | null;
           priority?: number;
+          end_date?: string | null;
           is_active?: boolean;
           created_at?: string;
           updated_at?: string;
@@ -105,6 +110,7 @@ export interface Database {
           cadence?: Database["public"]["Enums"]["income_cadence"];
           depends_on?: string[] | null;
           priority?: number;
+          end_date?: string | null;
           is_active?: boolean;
           updated_at?: string;
         };

@@ -41,7 +41,36 @@ export async function getIncomeSourcesForUser(
 export async function getAllIncomeSourcesForUser(
   userId?: string
 ): Promise<IncomeSource[]> {
-  return getIncomeSourcesForUser(userId, true);
+  const supabase = createClient();
+
+  // Early return if no userId
+  if (!userId) {
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      if (error || !user) return [];
+      userId = user.id;
+    } catch (error) {
+      console.error("Error getting user for income sources:", error);
+      return [];
+    }
+  }
+
+  // Simplified query - removed abortSignal for compatibility
+  const { data, error } = await supabase
+    .from("income_sources")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error fetching all income sources:", error);
+    return [];
+  }
+
+  return data || [];
 }
 
 // Income history queries for client components
@@ -112,29 +141,59 @@ export async function getBudgetItemsForUser(
 ): Promise<BudgetItem[]> {
   const supabase = createClient();
 
+  // Early return if no userId provided
   if (!userId) {
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (error || !user) return [];
-    userId = user.id;
+    try {
+      const {
+        data: { user },
+        error,
+      } = await supabase.auth.getUser();
+      if (error || !user) return [];
+      userId = user.id;
+    } catch (error) {
+      console.error("Error getting user for budget items:", error);
+      return [];
+    }
   }
 
-  let query = supabase.from("budget_items").select("*").eq("user_id", userId);
+  try {
+    // Add timeout and performance optimization
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Budget query timeout")), 8000)
+    );
 
-  if (!includeInactive) {
-    query = query.eq("is_active", true);
-  }
+    let query = supabase
+      .from("budget_items")
+      .select("*")
+      .eq("user_id", userId)
+      .order("priority", { ascending: true });
 
-  const { data, error } = await query.order("priority", { ascending: true });
+    if (!includeInactive) {
+      query = query.eq("is_active", true);
+    }
 
-  if (error) {
-    console.error("Error fetching budget items:", error);
+    // Add limit to prevent large result sets from causing timeouts
+    query = query.limit(100);
+
+    const queryPromise = query;
+
+    const result = await Promise.race([queryPromise, timeoutPromise]);
+
+    const { data, error } = result as {
+      data: BudgetItem[] | null;
+      error: Error | null;
+    };
+
+    if (error) {
+      console.error("Error fetching budget items:", error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error("Budget items query failed:", error);
     return [];
   }
-
-  return data || [];
 }
 
 export async function getAllBudgetItemsForUser(
