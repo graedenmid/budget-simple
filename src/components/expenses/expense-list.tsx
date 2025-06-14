@@ -6,6 +6,7 @@ import {
   Trash2,
   Calendar,
   DollarSign,
+  Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,24 +23,43 @@ import {
   getCategoryIcon,
   getCategoryGroup,
 } from "@/lib/constants/expense-categories";
-import { ExpenseWithDetails } from "@/lib/types/expenses";
+import { ExpenseWithDetails, ExpenseFilters } from "@/lib/types/expenses";
 
 interface ExpenseListProps {
+  filters?: ExpenseFilters;
   onExpenseEdit?: (expense: ExpenseWithDetails) => void;
   onExpenseDelete?: (expenseId: string) => void;
 }
 
 export function ExpenseList({
+  filters,
   onExpenseEdit,
   onExpenseDelete,
 }: ExpenseListProps) {
-  const { expenses, loading, error, hasMore, loadMore } = useExpenses();
+  const { expenses, loading, error, hasMore, loadMore } = useExpenses(filters);
+
+  // Count active filters
+  const activeFilterCount = filters
+    ? Object.keys(filters).filter(
+        (key) =>
+          filters[key as keyof ExpenseFilters] !== undefined &&
+          filters[key as keyof ExpenseFilters] !== ""
+      ).length
+    : 0;
 
   if (loading && expenses.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Expenses</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Recent Expenses</span>
+            {activeFilterCount > 0 && (
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4" />
+                <Badge variant="secondary">{activeFilterCount} filters</Badge>
+              </div>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -54,7 +74,15 @@ export function ExpenseList({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Expenses</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Recent Expenses</span>
+            {activeFilterCount > 0 && (
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4" />
+                <Badge variant="secondary">{activeFilterCount} filters</Badge>
+              </div>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
@@ -66,17 +94,33 @@ export function ExpenseList({
   }
 
   if (expenses.length === 0) {
+    const isFiltered = activeFilterCount > 0;
+
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Expenses</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Recent Expenses</span>
+            {activeFilterCount > 0 && (
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4" />
+                <Badge variant="secondary">{activeFilterCount} filters</Badge>
+              </div>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
             <DollarSign className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No expenses yet</h3>
+            <h3 className="text-lg font-medium mb-2">
+              {isFiltered
+                ? "No expenses match your filters"
+                : "No expenses yet"}
+            </h3>
             <p className="text-sm text-muted-foreground">
-              Start tracking your expenses by adding your first expense above.
+              {isFiltered
+                ? "Try adjusting your search criteria or clear filters to see all expenses."
+                : "Start tracking your expenses by adding your first expense above."}
             </p>
           </div>
         </CardContent>
@@ -89,7 +133,15 @@ export function ExpenseList({
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <span>Recent Expenses</span>
-          <Badge variant="secondary">{expenses.length} expenses</Badge>
+          <div className="flex items-center space-x-2">
+            {activeFilterCount > 0 && (
+              <div className="flex items-center space-x-2">
+                <Filter className="h-4 w-4" />
+                <Badge variant="secondary">{activeFilterCount} filters</Badge>
+              </div>
+            )}
+            <Badge variant="secondary">{expenses.length} expenses</Badge>
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
