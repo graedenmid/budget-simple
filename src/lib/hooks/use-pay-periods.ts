@@ -84,6 +84,9 @@ export function usePayPeriods(
     setError(null);
   }, []);
 
+  // Memoize the serialized filters to prevent unnecessary re-renders
+  const serializedFilters = useMemo(() => JSON.stringify(filters), [filters]);
+
   // Fetch pay periods - stable reference to prevent infinite loops
   const fetchPayPeriods = useCallback(async () => {
     if (!user) return;
@@ -92,9 +95,11 @@ export function usePayPeriods(
       setError(null);
       console.log("🔄 Fetching pay periods for user:", user.id);
 
+      // Parse serialized filters to avoid object reference issues
+      const parsedFilters = JSON.parse(serializedFilters);
       const payPeriodFilters: PayPeriodFilters = {
         user_id: user.id,
-        ...filters,
+        ...parsedFilters,
       };
 
       console.time("⏱️ Pay periods fetch");
@@ -127,7 +132,7 @@ export function usePayPeriods(
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, JSON.stringify(filters), payPeriodService]); // Stable dependencies
+  }, [user, serializedFilters, payPeriodService]);
 
   // Refresh pay periods
   const refreshPayPeriods = useCallback(async () => {
@@ -472,7 +477,7 @@ export function usePayPeriods(
         }
       }
     };
-  }, [user, autoRefresh]); // Removed fetchPayPeriods from dependencies to prevent infinite loop
+  }, [user, autoRefresh, fetchPayPeriods, supabase]);
 
   return {
     // Data

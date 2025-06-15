@@ -56,6 +56,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 1,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Utilities",
@@ -66,6 +67,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 2,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Phone",
@@ -76,6 +78,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 3,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Internet",
@@ -86,6 +89,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 4,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Groceries",
@@ -96,6 +100,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 5,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
     ],
   },
@@ -122,6 +127,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 1,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Wants & Discretionary",
@@ -132,6 +138,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 2,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Savings & Debt Repayment",
@@ -142,6 +149,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 3,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
     ],
   },
@@ -172,6 +180,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 1,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Minimum Debt Payments",
@@ -182,6 +191,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 2,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Emergency Fund",
@@ -192,6 +202,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 3,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Extra Debt Payment",
@@ -201,11 +212,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         cadence: "monthly",
         priority: 4,
         is_active: true,
-        depends_on: [
-          "essential-bills",
-          "minimum-debt-payments",
-          "emergency-fund",
-        ],
+        depends_on: null,
+        end_date: null,
       },
       {
         name: "Basic Discretionary",
@@ -215,11 +223,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         cadence: "monthly",
         priority: 5,
         is_active: true,
-        depends_on: [
-          "essential-bills",
-          "minimum-debt-payments",
-          "emergency-fund",
-        ],
+        depends_on: null,
+        end_date: null,
       },
     ],
   },
@@ -250,6 +255,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 1,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Emergency Fund",
@@ -260,6 +266,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 2,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Retirement Savings",
@@ -270,6 +277,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 3,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Investment Fund",
@@ -280,6 +288,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 4,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Lifestyle & Fun",
@@ -289,12 +298,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         cadence: "monthly",
         priority: 5,
         is_active: true,
-        depends_on: [
-          "essential-expenses",
-          "emergency-fund",
-          "retirement-savings",
-          "investment-fund",
-        ],
+        depends_on: null,
+        end_date: null,
       },
     ],
   },
@@ -325,6 +330,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 1,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Groceries & Food",
@@ -335,6 +341,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 2,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Childcare",
@@ -345,6 +352,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 3,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Transportation",
@@ -355,6 +363,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 4,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Children's Education",
@@ -365,6 +374,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 5,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Emergency Fund",
@@ -375,6 +385,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 6,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Family Activities",
@@ -384,14 +395,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         cadence: "monthly",
         priority: 7,
         is_active: true,
-        depends_on: [
-          "housing-utilities",
-          "groceries-food",
-          "childcare",
-          "transportation",
-          "children-education",
-          "emergency-fund",
-        ],
+        depends_on: null,
+        end_date: null,
       },
       {
         name: "Personal Spending",
@@ -401,14 +406,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         cadence: "monthly",
         priority: 8,
         is_active: true,
-        depends_on: [
-          "housing-utilities",
-          "groceries-food",
-          "childcare",
-          "transportation",
-          "children-education",
-          "emergency-fund",
-        ],
+        depends_on: null,
+        end_date: null,
       },
     ],
   },
@@ -439,6 +438,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 1,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Groceries",
@@ -449,6 +449,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 2,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Transportation",
@@ -459,6 +460,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 3,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Student Loan Payment",
@@ -469,6 +471,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 4,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Emergency Fund",
@@ -479,6 +482,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 5,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Entertainment & Social",
@@ -488,13 +492,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         cadence: "monthly",
         priority: 6,
         is_active: true,
-        depends_on: [
-          "rent-utilities",
-          "groceries",
-          "transportation",
-          "student-loan-payment",
-          "emergency-fund",
-        ],
+        depends_on: null,
+        end_date: null,
       },
     ],
   },
@@ -521,6 +520,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 1,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Healthcare & Insurance",
@@ -531,6 +531,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 2,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Food & Groceries",
@@ -541,6 +542,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 3,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Transportation",
@@ -551,6 +553,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 4,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Emergency Fund",
@@ -561,6 +564,7 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         priority: 5,
         is_active: true,
         depends_on: null,
+        end_date: null,
       },
       {
         name: "Travel & Hobbies",
@@ -570,13 +574,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         cadence: "monthly",
         priority: 6,
         is_active: true,
-        depends_on: [
-          "housing-utilities",
-          "healthcare-insurance",
-          "food-groceries",
-          "transportation",
-          "emergency-fund",
-        ],
+        depends_on: null,
+        end_date: null,
       },
       {
         name: "Gifts & Giving",
@@ -586,13 +585,8 @@ export const BUDGET_TEMPLATES: BudgetTemplate[] = [
         cadence: "monthly",
         priority: 7,
         is_active: true,
-        depends_on: [
-          "housing-utilities",
-          "healthcare-insurance",
-          "food-groceries",
-          "transportation",
-          "emergency-fund",
-        ],
+        depends_on: null,
+        end_date: null,
       },
     ],
   },
