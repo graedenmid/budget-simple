@@ -1,13 +1,25 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database";
+import type {
+  Database,
+  IncomeSource,
+  IncomeHistory,
+  BudgetItem,
+} from "@/types/database";
 
-type Tables = Database["public"]["Tables"];
-type IncomeSource = Tables["income_sources"]["Row"];
-type IncomeHistory = Tables["income_history"]["Row"];
-type BudgetItem = Tables["budget_items"]["Row"];
+// Add typed column selection constants at the top of the file
+// -----------------------------------------------------------------------------
+// Column lists must be compile-time string literals so that Supabase type
+// inference can correctly narrow the returned row types. Building them at
+// runtime via Array.join results in a generic `GenericStringError[]` type which
+// breaks type checking. Defining them as `const` string literals avoids the
+// issue while still allowing us to limit the selected columns.
+// -----------------------------------------------------------------------------
 
-// Simple query cache to prevent duplicate concurrent queries
-const queryCache = new Map<string, Promise<BudgetItem[]>>();
+const INCOME_SOURCE_COLUMNS =
+  "id, user_id, name, gross_amount, net_amount, cadence, start_date, end_date, is_active, created_at, updated_at" as const;
+
+const BUDGET_ITEM_COLUMNS =
+  "id, name, category, calc_type, value, priority, cadence, depends_on, is_active, end_date, created_at, user_id, updated_at" as const;
 
 // Income source queries for client components
 export async function getIncomeSourcesForUser(
@@ -25,7 +37,12 @@ export async function getIncomeSourcesForUser(
     userId = user.id;
   }
 
-  let query = supabase.from("income_sources").select("*").eq("user_id", userId);
+  const requiredColumns = INCOME_SOURCE_COLUMNS;
+
+  let query = supabase
+    .from("income_sources")
+    .select(requiredColumns)
+    .eq("user_id", userId);
 
   if (!includeInactive) {
     query = query.eq("is_active", true);
@@ -38,7 +55,7 @@ export async function getIncomeSourcesForUser(
     return [];
   }
 
-  return data || [];
+  return data ?? [];
 }
 
 export async function getAllIncomeSourcesForUser(
@@ -61,12 +78,16 @@ export async function getAllIncomeSourcesForUser(
     }
   }
 
+  // Define the columns needed by the IncomePage to reduce data transfer
+  const requiredColumns = INCOME_SOURCE_COLUMNS;
+
   // Simplified query - removed abortSignal for compatibility
   const { data, error } = await supabase
     .from("income_sources")
-    .select("*")
+    .select(requiredColumns)
     .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(100); // Add a sensible limit to prevent timeouts
 
   if (error) {
     console.error("Error fetching all income sources:", error);
@@ -144,7 +165,6 @@ export async function getBudgetItemsForUser(
 ): Promise<BudgetItem[]> {
   const supabase = createClient();
 
-  // Early return if no userId provided
   if (!userId) {
     try {
       const {
@@ -164,71 +184,49 @@ export async function getBudgetItemsForUser(
       `🔄 Fetching budget items for user: ${userId}, includeInactive: ${includeInactive}`
     );
 
-    // Check if we already have this query in progress to prevent duplicates
-    const cacheKey = `${userId}_${includeInactive}`;
-    if (queryCache.has(cacheKey)) {
-      console.log(`🔄 Using cached query for ${cacheKey}`);
-      return await queryCache.get(cacheKey)!;
+    const requiredColumns = BUDGET_ITEM_COLUMNS;
+
+    let query = supabase
+      .from("budget_items")
+      .select(requiredColumns)
+      .eq("user_id", userId)
+      .order("priority", { ascending: true });
+
+    if (!includeInactive) {
+      query = query.eq("is_active", true);
     }
 
-    // Create the query promise and cache it
-    const queryPromise = (async (): Promise<BudgetItem[]> => {
-      // Add timeout and performance optimization
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Budget query timeout")), 15000)
-      );
+    // Add limit to prevent large result sets from causing timeouts
+    query = query.limit(100);
 
-      let query = supabase
-        .from("budget_items")
-        .select("*")
-        .eq("user_id", userId)
-        .order("priority", { ascending: true });
+    const { data, error } = await query;
 
-      if (!includeInactive) {
-        query = query.eq("is_active", true);
-      }
+    if (error) {
+      // Use a more specific error message
+      console.error("Supabase query failed for budget items:", error);
+      throw new Error(`Supabase query failed: ${error.message}`);
+    }
 
-      // Add limit to prevent large result sets from causing timeouts
-      query = query.limit(100);
-
-      const timerLabel = `⏱️ Budget query ${userId}_${includeInactive}_${Date.now()}`;
-      console.time(timerLabel);
-      const result = await Promise.race([query, timeoutPromise]);
-      console.timeEnd(timerLabel);
-
-      const { data, error } = result as {
-        data: BudgetItem[] | null;
-        error: Error | null;
-      };
-
-      if (error) {
-        console.error("Error fetching budget items:", error);
-        return [];
-      }
-
-      console.log(`✅ Fetched ${data?.length || 0} budget items`);
-      return data || [];
-    })();
-
-    // Cache the promise
-    queryCache.set(cacheKey, queryPromise);
-
-    // Remove from cache after completion (success or failure)
-    queryPromise.finally(() => {
-      queryCache.delete(cacheKey);
-    });
-
-    return await queryPromise;
+    console.log(`✅ Fetched ${data?.length || 0} budget items`);
+    return data || [];
   } catch (error) {
     console.error("Budget items query failed:", error);
-    return [];
+    // Re-throw the error to be handled by the calling function
+    throw error;
   }
 }
 
 export async function getAllBudgetItemsForUser(
   userId?: string
 ): Promise<BudgetItem[]> {
-  return getBudgetItemsForUser(userId, true);
+  try {
+    return await getBudgetItemsForUser(userId, true);
+  } catch (error) {
+    // Log the error for debugging purposes
+    console.error("Failed to get all budget items; returning empty.", error);
+    // Gracefully return an empty array on failure
+    return [];
+  }
 }
 
 export async function getBudgetItemsByCategory(
@@ -247,9 +245,11 @@ export async function getBudgetItemsByCategory(
     userId = user.id;
   }
 
+  const requiredColumns = BUDGET_ITEM_COLUMNS;
+
   let query = supabase
     .from("budget_items")
-    .select("*")
+    .select(requiredColumns)
     .eq("user_id", userId)
     .eq("category", category);
 
@@ -257,7 +257,7 @@ export async function getBudgetItemsByCategory(
     query = query.eq("is_active", true);
   }
 
-  const { data, error } = await query.order("priority", { ascending: true });
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching budget items by category:", error);
@@ -265,34 +265,4 @@ export async function getBudgetItemsByCategory(
   }
 
   return data || [];
-}
-
-export async function getBudgetItem(
-  id: string,
-  userId?: string
-): Promise<BudgetItem | null> {
-  const supabase = createClient();
-
-  if (!userId) {
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-    if (error || !user) return null;
-    userId = user.id;
-  }
-
-  const { data, error } = await supabase
-    .from("budget_items")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", userId)
-    .single();
-
-  if (error) {
-    console.error("Error fetching budget item:", error);
-    return null;
-  }
-
-  return data;
 }

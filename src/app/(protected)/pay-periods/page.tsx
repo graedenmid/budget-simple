@@ -24,8 +24,13 @@ export default function PayPeriodsPage() {
     null
   );
   const [canAutoComplete, setCanAutoComplete] = useState(false);
-  const { refreshPayPeriods, isLoading, checkCanAutoComplete } =
-    usePayPeriods();
+  const {
+    payPeriods,
+    refreshPayPeriods,
+    isLoading,
+    error,
+    checkCanAutoComplete,
+  } = usePayPeriods();
 
   // Check if pay period can auto-complete when selected
   useEffect(() => {
@@ -102,6 +107,9 @@ export default function PayPeriodsPage() {
         <CardContent>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <PayPeriodSelector
+              payPeriods={payPeriods}
+              isLoading={isLoading}
+              error={error}
               selectedPayPeriod={selectedPayPeriod}
               onPayPeriodSelect={handlePayPeriodSelect}
               className="flex-1"

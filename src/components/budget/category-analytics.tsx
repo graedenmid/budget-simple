@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Target } from "lucide-react";
@@ -30,60 +30,27 @@ interface CategoryAnalyticsProps {
   className?: string;
   budgetItems?: BudgetItem[];
   incomeSources?: IncomeSource[];
+  isLoading?: boolean;
 }
 
 export function CategoryAnalytics({
   className,
   budgetItems: propBudgetItems,
   incomeSources: propIncomeSources,
-}: CategoryAnalyticsProps) {
+  isLoading: propIsLoading = false,
+}: CategoryAnalyticsProps = {}) {
   const { user } = useAuth();
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>(
     propBudgetItems || []
   );
-  const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
-  const [loading, setLoading] = useState(
-    !propBudgetItems && !propIncomeSources
+  const [incomeSources, setIncomeSources] = useState<IncomeSource[]>(
+    propIncomeSources || []
   );
+  const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
+  const [loading, setLoading] = useState(!propBudgetItems || propIsLoading);
 
-  // Determine if this component should fetch its own data
-  // Only fetch if both props are explicitly null/undefined AND this isn't a child component
-  const shouldFetchOwnData =
-    propBudgetItems === undefined && propIncomeSources === undefined;
-
-  useEffect(() => {
-    const loadData = async () => {
-      // If we have props data, use it directly
-      if (propBudgetItems && propIncomeSources) {
-        setBudgetItems(propBudgetItems);
-        calculateStats(propBudgetItems, propIncomeSources);
-        setLoading(false);
-        return;
-      }
-
-      // Only fetch data if we're in standalone mode (no props provided)
-      if (!shouldFetchOwnData || !user) {
-        return;
-      }
-
-      console.log("CategoryAnalytics: Fetching own data (standalone mode)");
-      setLoading(true);
-      try {
-        const [items, sources] = await Promise.all([
-          getBudgetItemsForUser(user.id, false), // Only active items
-          getIncomeSourcesForUser(user.id),
-        ]);
-
-        setBudgetItems(items);
-        calculateStats(items, sources);
-      } catch (error) {
-        console.error("Failed to load category analytics:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const calculateStats = (items: BudgetItem[], sources: IncomeSource[]) => {
+  const calculateStats = useCallback(
+    (items: BudgetItem[], sources: IncomeSource[]) => {
       if (items.length > 0 && sources.length > 0) {
         const activeSources = sources.filter((source) => source.is_active);
 
@@ -128,17 +95,64 @@ export function CategoryAnalytics({
                 items: categoryItems,
               };
             })
-            .filter((stat) => stat.itemCount > 0); // Only show categories with items
+            .filter((stat) => stat.itemCount > 0);
 
-          // Sort by total allocated amount (descending)
           stats.sort((a, b) => b.totalAllocated - a.totalAllocated);
           setCategoryStats(stats);
+        } else {
+          setCategoryStats([]);
         }
+      } else {
+        setCategoryStats([]);
       }
-    };
+    },
+    []
+  );
 
-    loadData();
-  }, [user, propBudgetItems, propIncomeSources, shouldFetchOwnData]);
+  const loadData = useCallback(async () => {
+    // Don't fetch if props are provided
+    if (propBudgetItems || !user) return;
+
+    console.log("CategoryAnalytics: Fetching own data (standalone mode)");
+    setLoading(true);
+    try {
+      const [items, sources] = await Promise.all([
+        getBudgetItemsForUser(user.id, false), // Only active items
+        getIncomeSourcesForUser(user.id),
+      ]);
+      setBudgetItems(items);
+      setIncomeSources(sources);
+    } catch (error) {
+      console.error("Failed to load category analytics:", error);
+      setBudgetItems([]);
+      setIncomeSources([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, propBudgetItems]);
+
+  useEffect(() => {
+    if (propBudgetItems && propIncomeSources) {
+      // Controlled mode: use props
+      setBudgetItems(propBudgetItems);
+      setIncomeSources(propIncomeSources);
+      setLoading(false);
+    } else {
+      // Uncontrolled mode: fetch data
+      loadData();
+    }
+  }, [propBudgetItems, propIncomeSources, loadData]);
+
+  useEffect(() => {
+    if (!loading) {
+      calculateStats(budgetItems, incomeSources);
+    }
+  }, [budgetItems, incomeSources, loading, calculateStats]);
+
+  useEffect(() => {
+    // Update loading state when prop changes
+    setLoading(propIsLoading);
+  }, [propIsLoading]);
 
   if (loading) {
     return (
