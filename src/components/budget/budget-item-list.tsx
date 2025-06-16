@@ -39,18 +39,11 @@ export function BudgetItemList({
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [showInactive, setShowInactive] = useState(false);
 
-  // Update local state when props change
-  useEffect(() => {
-    if (propBudgetItems) {
-      setBudgetItems(propBudgetItems);
-      setLoading(false);
-    }
-  }, [propBudgetItems]);
-
   // Load budget items only if not provided via props
   const loadBudgetItems = useCallback(async () => {
     if (!user || propBudgetItems) return; // Don't load if props provided
 
+    console.log("BudgetItemList: Fetching own data (standalone mode)");
     setLoading(true);
     try {
       const items = await getBudgetItemsForUser(user.id, showInactive);
@@ -63,8 +56,15 @@ export function BudgetItemList({
   }, [user, showInactive, propBudgetItems]);
 
   useEffect(() => {
-    loadBudgetItems();
-  }, [loadBudgetItems]);
+    // Only load if we don't have prop data
+    if (!propBudgetItems) {
+      loadBudgetItems();
+    } else {
+      // Use prop data
+      setBudgetItems(propBudgetItems);
+      setLoading(false);
+    }
+  }, [loadBudgetItems, propBudgetItems]);
 
   // Helper function to check if budget item is active based on end_date
   const isBudgetItemActive = (item: BudgetItem) => {

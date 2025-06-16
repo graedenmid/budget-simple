@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/client";
-import { Database } from "@/types/database";
+import type { Database } from "@/types/database";
 
 type Tables = Database["public"]["Tables"];
 type IncomeSource = Tables["income_sources"]["Row"];
 type IncomeHistory = Tables["income_history"]["Row"];
 type BudgetItem = Tables["budget_items"]["Row"];
+
+// Simple query cache to prevent duplicate concurrent queries
+const queryCache = new Map<string, Promise<BudgetItem[]>>();
 
 // Income source queries for client components
 export async function getIncomeSourcesForUser(
@@ -157,39 +160,65 @@ export async function getBudgetItemsForUser(
   }
 
   try {
-    // Add timeout and performance optimization
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Budget query timeout")), 8000)
+    console.log(
+      `🔄 Fetching budget items for user: ${userId}, includeInactive: ${includeInactive}`
     );
 
-    let query = supabase
-      .from("budget_items")
-      .select("*")
-      .eq("user_id", userId)
-      .order("priority", { ascending: true });
-
-    if (!includeInactive) {
-      query = query.eq("is_active", true);
+    // Check if we already have this query in progress to prevent duplicates
+    const cacheKey = `${userId}_${includeInactive}`;
+    if (queryCache.has(cacheKey)) {
+      console.log(`🔄 Using cached query for ${cacheKey}`);
+      return await queryCache.get(cacheKey)!;
     }
 
-    // Add limit to prevent large result sets from causing timeouts
-    query = query.limit(100);
+    // Create the query promise and cache it
+    const queryPromise = (async (): Promise<BudgetItem[]> => {
+      // Add timeout and performance optimization
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Budget query timeout")), 15000)
+      );
 
-    const queryPromise = query;
+      let query = supabase
+        .from("budget_items")
+        .select("*")
+        .eq("user_id", userId)
+        .order("priority", { ascending: true });
 
-    const result = await Promise.race([queryPromise, timeoutPromise]);
+      if (!includeInactive) {
+        query = query.eq("is_active", true);
+      }
 
-    const { data, error } = result as {
-      data: BudgetItem[] | null;
-      error: Error | null;
-    };
+      // Add limit to prevent large result sets from causing timeouts
+      query = query.limit(100);
 
-    if (error) {
-      console.error("Error fetching budget items:", error);
-      return [];
-    }
+      const timerLabel = `⏱️ Budget query ${userId}_${includeInactive}_${Date.now()}`;
+      console.time(timerLabel);
+      const result = await Promise.race([query, timeoutPromise]);
+      console.timeEnd(timerLabel);
 
-    return data || [];
+      const { data, error } = result as {
+        data: BudgetItem[] | null;
+        error: Error | null;
+      };
+
+      if (error) {
+        console.error("Error fetching budget items:", error);
+        return [];
+      }
+
+      console.log(`✅ Fetched ${data?.length || 0} budget items`);
+      return data || [];
+    })();
+
+    // Cache the promise
+    queryCache.set(cacheKey, queryPromise);
+
+    // Remove from cache after completion (success or failure)
+    queryPromise.finally(() => {
+      queryCache.delete(cacheKey);
+    });
+
+    return await queryPromise;
   } catch (error) {
     console.error("Budget items query failed:", error);
     return [];
