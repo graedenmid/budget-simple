@@ -8,6 +8,7 @@ import {
   PayPeriodGenerationConfig,
   PayPeriodGenerationResult,
   PayPeriodStats,
+  IncomeCadence,
 } from "@/lib/types/pay-periods";
 import { createClient } from "@/lib/supabase/client";
 import { logger } from "@/lib/error-handling/logger";
@@ -429,6 +430,58 @@ export function usePayPeriods(
       fetchPayPeriods();
     }
   }, [user, fetchPayPeriods]);
+
+  // *** NEW EFFECT: Auto-generate a pay period when none exist ***
+  useEffect(() => {
+    // Only attempt generation when:
+    // 1. A user is authenticated
+    // 2. We are not currently loading or generating
+    // 3. No pay periods are present in state
+    if (!user || isLoading || isGenerating || payPeriods.length > 0) {
+      return;
+    }
+
+    const generateForActiveIncomeSources = async () => {
+      try {
+        // Fetch all active income sources for the user
+        const { data: incomeSources, error } = await supabase
+          .from("income_sources")
+          .select("id, cadence, start_date, net_amount")
+          .eq("user_id", user.id)
+          .eq("is_active", true);
+
+        if (error) {
+          console.error(
+            "Failed to fetch income sources for pay period generation:",
+            error
+          );
+          return;
+        }
+
+        if (!incomeSources || incomeSources.length === 0) {
+          // Nothing to generate if user has no active income sources
+          return;
+        }
+
+        // Generate a pay period for each active income source
+        for (const income of incomeSources) {
+          await generateNextPayPeriod({
+            income_source_id: income.id as string,
+            user_id: user.id,
+            cadence: income.cadence as IncomeCadence,
+            start_date: new Date(income.start_date as string),
+            expected_net: income.net_amount as number,
+          });
+        }
+      } catch (err) {
+        console.error("Automatic pay period generation failed:", err);
+      }
+    };
+
+    generateForActiveIncomeSources();
+    // We intentionally omit generateNextPayPeriod from deps to avoid re-running while it mutates state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, payPeriods, isLoading, isGenerating, supabase]);
 
   // Real-time subscription effect
   useEffect(() => {

@@ -58,7 +58,59 @@ export function useAllocationsForPayPeriod(payPeriodId: string | null) {
         allocationService.getAllocationSummary(payPeriodId),
       ]);
 
-      setAllocations(allocationsData);
+      // Auto-generate allocations if none exist but budget items are configured
+      if (allocationsData.length === 0) {
+        // Fetch active budget items and income source for this pay period
+        const { data: payPeriod, error: ppError } = await supabase
+          .from("pay_periods")
+          .select("id, income_source_id")
+          .eq("id", payPeriodId)
+          .single();
+
+        if (!ppError && payPeriod) {
+          const [{ data: incomeSource }, { data: budgetItems }] =
+            await Promise.all([
+              supabase
+                .from("income_sources")
+                .select("*")
+                .eq("id", payPeriod.income_source_id)
+                .single(),
+              supabase
+                .from("budget_items")
+                .select("*")
+                .eq("user_id", user.id)
+                .eq("is_active", true),
+            ]);
+
+          if (incomeSource && budgetItems && budgetItems.length > 0) {
+            try {
+              await allocationService.generateAllocationsForPayPeriod({
+                pay_period_id: payPeriodId,
+                budget_items:
+                  budgetItems as unknown as import("@/types/database").BudgetItem[],
+                income_source:
+                  incomeSource as unknown as import("@/types/database").IncomeSource,
+              });
+
+              // Reload allocations after generation
+              const regeneratedAllocations =
+                await allocationService.getAllocationsForPayPeriod(
+                  payPeriodId,
+                  true
+                );
+              setAllocations(regeneratedAllocations);
+            } catch (genError) {
+              console.error(
+                "Automatic allocation generation failed:",
+                genError
+              );
+            }
+          }
+        }
+      } else {
+        setAllocations(allocationsData);
+      }
+
       setSummary(summaryData);
     } catch (err) {
       const errorMessage = "Failed to load allocations";
@@ -67,7 +119,7 @@ export function useAllocationsForPayPeriod(payPeriodId: string | null) {
     } finally {
       setLoading(false);
     }
-  }, [payPeriodId, user]);
+  }, [payPeriodId, user, supabase]);
 
   // Set up real-time subscriptions
   useEffect(() => {
