@@ -1,13 +1,25 @@
 import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/types/database";
+import type {
+  Database,
+  IncomeSource,
+  IncomeHistory,
+  BudgetItem,
+} from "@/types/database";
 
-type Tables = Database["public"]["Tables"];
-type IncomeSource = Tables["income_sources"]["Row"];
-type IncomeHistory = Tables["income_history"]["Row"];
-type BudgetItem = Tables["budget_items"]["Row"];
-type PayPeriod = Tables["pay_periods"]["Row"];
-type Allocation = Tables["allocations"]["Row"];
-type Expense = Tables["expenses"]["Row"];
+// Add typed column selection constants at the top of the file
+// -----------------------------------------------------------------------------
+// Column lists must be compile-time string literals so that Supabase type
+// inference can correctly narrow the returned row types. Building them at
+// runtime via Array.join results in a generic `GenericStringError[]` type which
+// breaks type checking. Defining them as `const` string literals avoids the
+// issue while still allowing us to limit the selected columns.
+// -----------------------------------------------------------------------------
+
+const INCOME_SOURCE_COLUMNS =
+  "id, user_id, name, gross_amount, net_amount, cadence, start_date, end_date, is_active, created_at, updated_at" as const;
+
+const BUDGET_ITEM_COLUMNS =
+  "id, name, category, calc_type, value, priority, cadence, depends_on, is_active, end_date, created_at, user_id, updated_at" as const;
 
 // Income source queries for client components
 export async function getIncomeSourcesForUser(
@@ -25,19 +37,7 @@ export async function getIncomeSourcesForUser(
     userId = user.id;
   }
 
-  const requiredColumns = [
-    "id",
-    "user_id",
-    "name",
-    "gross_amount",
-    "net_amount",
-    "cadence",
-    "start_date",
-    "end_date",
-    "is_active",
-    "created_at",
-    "updated_at",
-  ].join(",");
+  const requiredColumns = INCOME_SOURCE_COLUMNS;
 
   let query = supabase
     .from("income_sources")
@@ -55,7 +55,7 @@ export async function getIncomeSourcesForUser(
     return [];
   }
 
-  return data || [];
+  return data ?? [];
 }
 
 export async function getAllIncomeSourcesForUser(
@@ -79,19 +79,7 @@ export async function getAllIncomeSourcesForUser(
   }
 
   // Define the columns needed by the IncomePage to reduce data transfer
-  const requiredColumns = [
-    "id",
-    "user_id",
-    "name",
-    "gross_amount",
-    "net_amount",
-    "cadence",
-    "start_date",
-    "end_date",
-    "is_active",
-    "created_at",
-    "updated_at",
-  ].join(",");
+  const requiredColumns = INCOME_SOURCE_COLUMNS;
 
   // Simplified query - removed abortSignal for compatibility
   const { data, error } = await supabase
@@ -196,21 +184,7 @@ export async function getBudgetItemsForUser(
       `🔄 Fetching budget items for user: ${userId}, includeInactive: ${includeInactive}`
     );
 
-    const requiredColumns = [
-      "id",
-      "name",
-      "category",
-      "calc_type",
-      "value",
-      "priority",
-      "cadence",
-      "depends_on",
-      "is_active",
-      "end_date",
-      "created_at",
-      "user_id",
-      "updated_at",
-    ].join(",");
+    const requiredColumns = BUDGET_ITEM_COLUMNS;
 
     let query = supabase
       .from("budget_items")
@@ -271,21 +245,7 @@ export async function getBudgetItemsByCategory(
     userId = user.id;
   }
 
-  const requiredColumns = [
-    "id",
-    "name",
-    "category",
-    "calc_type",
-    "value",
-    "priority",
-    "cadence",
-    "depends_on",
-    "is_active",
-    "end_date",
-    "created_at",
-    "user_id",
-    "updated_at",
-  ].join(",");
+  const requiredColumns = BUDGET_ITEM_COLUMNS;
 
   let query = supabase
     .from("budget_items")
