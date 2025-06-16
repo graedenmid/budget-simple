@@ -10,7 +10,6 @@ import { useAuth } from "@/lib/auth/auth-context";
 import { getBudgetItemsForUser } from "@/lib/database/client-queries";
 import { BudgetItemCard } from "./budget-item-card";
 import { BudgetItemForm } from "./budget-item-form";
-import { CategoryAnalytics } from "./category-analytics";
 import { CATEGORY_INFO } from "@/lib/schemas/budget-item";
 import type { BudgetItem } from "@/types/database";
 
@@ -21,17 +20,19 @@ type SortOrder = "asc" | "desc";
 interface BudgetItemListProps {
   budgetItems?: BudgetItem[];
   onRefresh?: () => void;
+  isLoading?: boolean;
 }
 
 export function BudgetItemList({
   budgetItems: propBudgetItems,
   onRefresh,
+  isLoading: propIsLoading = false,
 }: BudgetItemListProps = {}) {
   const { user } = useAuth();
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>(
     propBudgetItems || []
   );
-  const [loading, setLoading] = useState(!propBudgetItems);
+  const [loading, setLoading] = useState(!propBudgetItems || propIsLoading);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingItem, setEditingItem] = useState<BudgetItem | null>(null);
   const [activeTab, setActiveTab] = useState("all");
@@ -65,6 +66,11 @@ export function BudgetItemList({
       setLoading(false);
     }
   }, [loadBudgetItems, propBudgetItems]);
+
+  useEffect(() => {
+    // Update loading state when prop changes
+    setLoading(propIsLoading);
+  }, [propIsLoading]);
 
   // Helper function to check if budget item is active based on end_date
   const isBudgetItemActive = (item: BudgetItem) => {
@@ -155,6 +161,14 @@ export function BudgetItemList({
         item.category === category && (showInactive || isBudgetItemActive(item))
     ).length;
   };
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">Loading budget items...</p>
+      </div>
+    );
+  }
 
   if (viewMode === "form") {
     return (
@@ -291,9 +305,6 @@ export function BudgetItemList({
           )}
         </TabsContent>
       </Tabs>
-
-      {/* Category Analytics */}
-      {!loading && budgetItems.length > 0 && <CategoryAnalytics />}
 
       {/* Summary */}
       {!loading && budgetItems.length > 0 && (

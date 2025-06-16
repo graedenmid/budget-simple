@@ -40,25 +40,15 @@ export default function BudgetPage() {
     async function loadData() {
       if (!user) return;
 
+      setIsLoading(true);
+      console.log("🔄 Starting budget data load for user:", user.id);
+
       try {
-        setIsLoading(true);
-        console.log("🔄 Starting budget data load for user:", user.id);
-
-        // Add timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Request timeout")), 20000)
-        );
-
         console.time("⏱️ Budget data load");
-        const dataPromise = Promise.all([
+        const [items, sources] = await Promise.all([
           getBudgetItemsForUser(user.id, true),
           getIncomeSourcesForUser(user.id),
         ]);
-
-        const [items, sources] = (await Promise.race([
-          dataPromise,
-          timeoutPromise,
-        ])) as [BudgetItem[], IncomeSource[]];
 
         console.timeEnd("⏱️ Budget data load");
         console.log(
@@ -71,7 +61,6 @@ export default function BudgetPage() {
         setIncomeSources(sources || []);
       } catch (error) {
         console.error("❌ Failed to load budget data:", error);
-        // Set empty arrays on error to show empty state instead of infinite loading
         setBudgetItems([]);
         setIncomeSources([]);
       } finally {
@@ -231,6 +220,7 @@ export default function BudgetPage() {
               <BudgetItemList
                 budgetItems={budgetItems}
                 onRefresh={handleDataRefresh}
+                isLoading={isLoading}
               />
             </TabsContent>
 
@@ -238,6 +228,7 @@ export default function BudgetPage() {
               <CategoryAnalytics
                 budgetItems={budgetItems}
                 incomeSources={incomeSources}
+                isLoading={isLoading}
               />
             </TabsContent>
 

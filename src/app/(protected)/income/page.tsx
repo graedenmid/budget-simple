@@ -49,28 +49,13 @@ export default function IncomePage() {
       setLoading(true);
       setError(null);
 
-      // Add timeout to prevent infinite loading
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Request timeout")), 10000)
-      );
-
-      const dataPromise = getAllIncomeSourcesForUser(user.id);
-
-      const sources = (await Promise.race([
-        dataPromise,
-        timeoutPromise,
-      ])) as IncomeSource[];
+      const sources = await getAllIncomeSourcesForUser(user.id);
       setIncomeSources(sources);
     } catch (err) {
       console.error("Error loading income sources:", err);
-      // For timeout errors, show empty state instead of error message
-      if (err instanceof Error && err.message === "Request timeout") {
-        setError(null); // Don't show error for timeout - just empty state
-      } else {
-        setError(
-          "Failed to load income sources. Please try refreshing the page."
-        );
-      }
+      setError(
+        "Failed to load income sources. Please try refreshing the page."
+      );
       setIncomeSources([]); // Set empty array on any error
     } finally {
       setLoading(false);
@@ -89,28 +74,13 @@ export default function IncomePage() {
         setLoading(true);
         setError(null);
 
-        // Add timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Request timeout")), 10000)
-        );
-
-        const dataPromise = getAllIncomeSourcesForUser(user.id);
-
-        const sources = (await Promise.race([
-          dataPromise,
-          timeoutPromise,
-        ])) as IncomeSource[];
+        const sources = await getAllIncomeSourcesForUser(user.id);
         setIncomeSources(sources);
       } catch (err) {
         console.error("Error loading income sources:", err);
-        // For timeout errors, show empty state instead of error message
-        if (err instanceof Error && err.message === "Request timeout") {
-          setError(null); // Don't show error for timeout - just empty state
-        } else {
-          setError(
-            "Failed to load income sources. Please try refreshing the page."
-          );
-        }
+        setError(
+          "Failed to load income sources. Please try refreshing the page."
+        );
         setIncomeSources([]); // Set empty array on any error
       } finally {
         setLoading(false);

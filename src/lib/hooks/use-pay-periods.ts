@@ -77,7 +77,8 @@ export function usePayPeriods(
 
   // Service instance - memoized to prevent recreation on every render
   const payPeriodService = useMemo(() => new PayPeriodService(), []);
-  const supabase = createClient();
+  // Create a single Supabase client instance for the lifetime of this hook
+  const supabase = useMemo(() => createClient(), []);
 
   // Clear error function
   const clearError = useCallback(() => {
@@ -102,8 +103,6 @@ export function usePayPeriods(
         ...parsedFilters,
       };
 
-      console.time("⏱️ Pay periods fetch");
-
       // Use Promise.all to fetch data in parallel instead of sequentially
       const [periods, current, statistics] = await Promise.all([
         payPeriodService.getPayPeriods(payPeriodFilters),
@@ -111,7 +110,6 @@ export function usePayPeriods(
         payPeriodService.getPayPeriodStats(user.id),
       ]);
 
-      console.timeEnd("⏱️ Pay periods fetch");
       console.log(
         `✅ Loaded ${periods.length} pay periods, current: ${
           current?.id || "none"
@@ -425,59 +423,59 @@ export function usePayPeriods(
     [user, payPeriodService]
   );
 
-  // Combined initial fetch and real-time subscription
+  // Initial data fetch effect
   useEffect(() => {
-    if (!user) return;
-
-    // Initial fetch
-    fetchPayPeriods();
-
-    // Set up real-time subscription only if autoRefresh is enabled
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    if (autoRefresh) {
-      console.log("🔄 Setting up realtime subscription for pay periods");
-      try {
-        channel = supabase
-          .channel(`pay_periods:${user.id}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "*",
-              schema: "public",
-              table: "pay_periods",
-              filter: `user_id=eq.${user.id}`,
-            },
-            (payload) => {
-              console.log("📡 Pay periods realtime update:", payload);
-              // Use a timeout to debounce rapid changes
-              setTimeout(() => {
-                console.log("🔄 Refreshing pay periods due to realtime update");
-                fetchPayPeriods();
-              }, 1000); // Increased debounce time
-            }
-          )
-          .subscribe((status) => {
-            console.log("📡 Pay periods subscription status:", status);
-            if (status === "SUBSCRIBED") {
-              console.log("✅ Pay periods realtime subscription active");
-            }
-          });
-      } catch (error) {
-        console.warn("❌ Failed to set up realtime subscription:", error);
-      }
+    if (user) {
+      fetchPayPeriods();
     }
+  }, [user, fetchPayPeriods]);
+
+  // Real-time subscription effect
+  useEffect(() => {
+    if (!user || !autoRefresh) {
+      return;
+    }
+
+    console.log("🔄 Setting up realtime subscription for pay periods");
+    const channelId = `pay_periods:${user.id}:${Math.random()
+      .toString(36)
+      .slice(2)}`;
+    const channel = supabase.channel(channelId);
+
+    channel
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "pay_periods",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log("📡 Pay periods realtime update:", payload);
+          refreshPayPeriods();
+        }
+      )
+      .subscribe((status, err) => {
+        console.log(`📡 Pay periods subscription status: ${status}`);
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || err) {
+          setError(
+            `Realtime connection failed: ${
+              err?.message || status
+            }. Some updates may be missed.`
+          );
+          console.error("❌ Realtime subscription failed:", err || status);
+        }
+      });
 
     // Cleanup function
     return () => {
-      if (channel) {
-        try {
-          supabase.removeChannel(channel);
-        } catch (error) {
-          console.warn("Failed to cleanup realtime subscription:", error);
-        }
-      }
+      console.log(`🧹 Cleaning up realtime subscription: ${channelId}`);
+      channel.unsubscribe().catch((error) => {
+        console.warn("Failed to unsubscribe from realtime channel:", error);
+      });
     };
-  }, [user, autoRefresh, fetchPayPeriods, supabase]);
+  }, [user, autoRefresh, supabase, refreshPayPeriods]);
 
   return {
     // Data

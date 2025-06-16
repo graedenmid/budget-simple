@@ -10,22 +10,26 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { usePayPeriods } from "@/lib/hooks/use-pay-periods";
-import { PayPeriod } from "@/lib/types/pay-periods";
 import { formatDateRange, isPayPeriodActive } from "@/lib/utils/date-utils";
+import { PayPeriod } from "@/lib/types/pay-periods";
 
 interface PayPeriodSelectorProps {
+  payPeriods: PayPeriod[];
+  isLoading: boolean;
+  error: string | null;
   selectedPayPeriod: PayPeriod | null;
   onPayPeriodSelect: (payPeriod: PayPeriod) => void;
   className?: string;
 }
 
 export function PayPeriodSelector({
+  payPeriods,
+  isLoading,
+  error,
   selectedPayPeriod,
   onPayPeriodSelect,
   className,
 }: PayPeriodSelectorProps) {
-  const { payPeriods, isLoading, error } = usePayPeriods();
   const [isOpen, setIsOpen] = useState(false);
 
   // Auto-select the current active pay period

@@ -10,7 +10,8 @@ export interface LoggerConfig {
 
 class Logger {
   private config: LoggerConfig;
-  private supabase = createClient();
+  // Supabase client is created lazily to avoid accessing browser-only APIs
+  private _supabase: ReturnType<typeof createClient> | null = null;
 
   constructor(config?: Partial<LoggerConfig>) {
     this.config = {
@@ -20,6 +21,20 @@ class Logger {
       logLevel: ErrorSeverity.LOW,
       ...config,
     };
+  }
+
+  private get supabase() {
+    if (!this._supabase) {
+      // Avoid initializing Supabase during the server-side render to prevent
+      // window/localStorage access errors. The database logger only runs in
+      // the browser after hydration, so guard against SSR.
+      if (typeof window === "undefined") {
+        return null;
+      }
+
+      this._supabase = createClient();
+    }
+    return this._supabase;
   }
 
   private shouldLog(severity: ErrorSeverity): boolean {
@@ -108,7 +123,13 @@ class Logger {
         occurred_at: error.timestamp.toISOString(),
       };
 
-      const { error: dbError } = await this.supabase
+      const supabase = this.supabase;
+      if (!supabase) {
+        // Running during SSR – skip DB logging
+        return;
+      }
+
+      const { error: dbError } = await supabase
         .from("error_logs")
         .insert(logEntry);
 
@@ -176,7 +197,12 @@ class Logger {
   // Method to retrieve error logs for admin/debugging
   async getErrorLogs(userId?: string, limit = 50): Promise<ErrorLogEntry[]> {
     try {
-      let query = this.supabase
+      const supabase = this.supabase;
+      if (!supabase) {
+        return [];
+      }
+
+      let query = supabase
         .from("error_logs")
         .select("*")
         .order("created_at", { ascending: false })
@@ -202,7 +228,12 @@ class Logger {
   // Method to mark errors as resolved
   async markErrorResolved(errorId: string): Promise<void> {
     try {
-      const { error } = await this.supabase
+      const supabase = this.supabase;
+      if (!supabase) {
+        return;
+      }
+
+      const { error } = await supabase
         .from("error_logs")
         .update({ resolved: true })
         .eq("error->id", errorId);
