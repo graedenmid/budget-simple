@@ -15,7 +15,7 @@ import {
   formatCurrency,
 } from "@/lib/calculations/budget-calculations";
 import { CATEGORY_INFO } from "@/lib/schemas/budget-item";
-import type { BudgetItem } from "@/types/database";
+import type { BudgetItem, IncomeSource } from "@/types/database";
 
 interface CategoryStats {
   category: string;
@@ -28,18 +28,45 @@ interface CategoryStats {
 
 interface CategoryAnalyticsProps {
   className?: string;
+  budgetItems?: BudgetItem[];
+  incomeSources?: IncomeSource[];
 }
 
-export function CategoryAnalytics({ className }: CategoryAnalyticsProps) {
+export function CategoryAnalytics({
+  className,
+  budgetItems: propBudgetItems,
+  incomeSources: propIncomeSources,
+}: CategoryAnalyticsProps) {
   const { user } = useAuth();
-  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>([]);
+  const [budgetItems, setBudgetItems] = useState<BudgetItem[]>(
+    propBudgetItems || []
+  );
   const [categoryStats, setCategoryStats] = useState<CategoryStats[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(
+    !propBudgetItems && !propIncomeSources
+  );
+
+  // Determine if this component should fetch its own data
+  // Only fetch if both props are explicitly null/undefined AND this isn't a child component
+  const shouldFetchOwnData =
+    propBudgetItems === undefined && propIncomeSources === undefined;
 
   useEffect(() => {
     const loadData = async () => {
-      if (!user) return;
+      // If we have props data, use it directly
+      if (propBudgetItems && propIncomeSources) {
+        setBudgetItems(propBudgetItems);
+        calculateStats(propBudgetItems, propIncomeSources);
+        setLoading(false);
+        return;
+      }
 
+      // Only fetch data if we're in standalone mode (no props provided)
+      if (!shouldFetchOwnData || !user) {
+        return;
+      }
+
+      console.log("CategoryAnalytics: Fetching own data (standalone mode)");
       setLoading(true);
       try {
         const [items, sources] = await Promise.all([
@@ -48,10 +75,19 @@ export function CategoryAnalytics({ className }: CategoryAnalyticsProps) {
         ]);
 
         setBudgetItems(items);
+        calculateStats(items, sources);
+      } catch (error) {
+        console.error("Failed to load category analytics:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const calculateStats = (items: BudgetItem[], sources: IncomeSource[]) => {
+      if (items.length > 0 && sources.length > 0) {
         const activeSources = sources.filter((source) => source.is_active);
 
-        // Calculate category statistics
-        if (items.length > 0 && activeSources.length > 0) {
+        if (activeSources.length > 0) {
           const primaryIncomeSource = activeSources[0];
           const allocations = calculateBudgetAllocations(
             items,
@@ -98,15 +134,11 @@ export function CategoryAnalytics({ className }: CategoryAnalyticsProps) {
           stats.sort((a, b) => b.totalAllocated - a.totalAllocated);
           setCategoryStats(stats);
         }
-      } catch (error) {
-        console.error("Failed to load category analytics:", error);
-      } finally {
-        setLoading(false);
       }
     };
 
     loadData();
-  }, [user]);
+  }, [user, propBudgetItems, propIncomeSources, shouldFetchOwnData]);
 
   if (loading) {
     return (

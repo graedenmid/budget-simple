@@ -46,7 +46,7 @@ export default function BudgetPage() {
 
         // Add timeout to prevent infinite loading
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("Request timeout")), 10000)
+          setTimeout(() => reject(new Error("Request timeout")), 20000)
         );
 
         console.time("⏱️ Budget data load");
@@ -235,7 +235,10 @@ export default function BudgetPage() {
             </TabsContent>
 
             <TabsContent value="analytics" className="space-y-6">
-              <CategoryAnalytics />
+              <CategoryAnalytics
+                budgetItems={budgetItems}
+                incomeSources={incomeSources}
+              />
             </TabsContent>
 
             <TabsContent value="dependencies" className="space-y-6">
