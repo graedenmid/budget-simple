@@ -23,7 +23,8 @@ import {
   validatePayPeriod,
 } from "@/lib/utils/pay-period-calculations";
 
-import { logger } from "@/lib/error-handling";
+import { logger } from "@/lib/error-handling/logger";
+import type { BudgetItem, IncomeSource } from "@/types/database";
 
 // Simple database error handler
 function handleDatabaseError(error: unknown, message: string): Error {
@@ -361,6 +362,42 @@ export class PayPeriodService {
         expected_net: calculation.expected_net,
         status: "ACTIVE",
       });
+
+      // After creating the pay period, automatically generate allocations
+      try {
+        // Fetch active budget items for the user
+        const { data: budgetItems, error: budgetError } = await this.supabase
+          .from("budget_items")
+          .select("*")
+          .eq("user_id", config.user_id)
+          .eq("is_active", true);
+
+        if (budgetError) {
+          throw new Error(
+            `Failed to fetch budget items: ${budgetError.message}`
+          );
+        }
+
+        if (budgetItems && budgetItems.length > 0) {
+          // Lazily import AllocationService to avoid circular dependencies at top level
+          const { AllocationService } = await import("./allocation-service");
+          const allocationService = new AllocationService();
+
+          await allocationService.generateAllocationsForPayPeriod({
+            pay_period_id: newPayPeriod.id,
+            budget_items: budgetItems as unknown as BudgetItem[],
+            income_source: incomeSource as unknown as IncomeSource,
+          });
+        }
+      } catch (allocError) {
+        // Allocation generation failures should not block pay period creation
+        console.error("Automatic allocation generation failed:", allocError);
+        await logError(allocError as Error, {
+          context: "PayPeriodService.generateNextPayPeriod.autoAllocation",
+          payPeriodId: newPayPeriod.id,
+          userId: config.user_id,
+        });
+      }
 
       return {
         success: true,
