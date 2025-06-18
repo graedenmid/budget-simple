@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/auth/auth-context";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,19 +38,44 @@ export default function IncomePage() {
   const [editingSource, setEditingSource] = useState<IncomeSource | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load income sources function (for manual calls)
-  const loadIncomeSources = async () => {
+  // Load income sources function (memoized for stable reference)
+  const loadIncomeSources = useCallback(async () => {
+    console.log("[IncomePage] loadIncomeSources called. userId:", user?.id);
     if (!user?.id) {
+      console.warn("[IncomePage] No user id available – skipping fetch.");
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
+      console.log("[IncomePage] Fetching income sources from Supabase...");
       setError(null);
 
-      const sources = await getAllIncomeSourcesForUser(user.id);
+      // Safety timeout to avoid indefinite loading if Supabase hangs
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+        console.error(
+          "[IncomePage] Supabase request aborted after 10s timeout."
+        );
+        // Provide immediate feedback to the user instead of an infinite loader
+        setError(
+          "Request timed out. Please check your network connection and try again."
+        );
+        setLoading(false);
+      }, 10000);
+
+      const sources = await getAllIncomeSourcesForUser(
+        user.id,
+        controller.signal
+      );
+
+      clearTimeout(timeoutId);
       setIncomeSources(sources);
+      console.log(
+        `[IncomePage] Received ${sources.length} income sources from Supabase.`
+      );
     } catch (err) {
       console.error("Error loading income sources:", err);
       setError(
@@ -58,43 +83,17 @@ export default function IncomePage() {
       );
       setIncomeSources([]); // Set empty array on any error
     } finally {
+      console.log("[IncomePage] loadIncomeSources finished – clearing loader.");
       setLoading(false);
     }
-  };
+  }, [user?.id]);
 
-  // Effect to load data when user is available
+  // Load data once authentication state is settled
   useEffect(() => {
-    const loadData = async () => {
-      if (!user?.id) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        const sources = await getAllIncomeSourcesForUser(user.id);
-        setIncomeSources(sources);
-      } catch (err) {
-        console.error("Error loading income sources:", err);
-        setError(
-          "Failed to load income sources. Please try refreshing the page."
-        );
-        setIncomeSources([]); // Set empty array on any error
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Only load when we have a user and auth is not loading
-    if (user && !authLoading) {
-      loadData();
-    } else if (!authLoading && !user) {
-      // Auth finished loading but no user - clear loading state
-      setLoading(false);
+    if (!authLoading) {
+      loadIncomeSources();
     }
-  }, [user, authLoading]); // No external function dependencies
+  }, [authLoading, loadIncomeSources]);
 
   const handleAddNew = () => {
     setEditingSource(null);

@@ -59,7 +59,8 @@ export async function getIncomeSourcesForUser(
 }
 
 export async function getAllIncomeSourcesForUser(
-  userId?: string
+  userId?: string,
+  signal?: AbortSignal
 ): Promise<IncomeSource[]> {
   const supabase = createClient();
 
@@ -81,13 +82,26 @@ export async function getAllIncomeSourcesForUser(
   // Define the columns needed by the IncomePage to reduce data transfer
   const requiredColumns = INCOME_SOURCE_COLUMNS;
 
-  // Simplified query - removed abortSignal for compatibility
-  const { data, error } = await supabase
+  // Build the query
+  let query = supabase
     .from("income_sources")
     .select(requiredColumns)
     .eq("user_id", userId)
     .order("created_at", { ascending: true })
-    .limit(100); // Add a sensible limit to prevent timeouts
+    .limit(100);
+
+  // Attach AbortSignal only if the helper exists to maintain compatibility across supabase-js versions
+  if (
+    signal &&
+    typeof (query as { abortSignal?: (s: AbortSignal) => typeof query })
+      .abortSignal === "function"
+  ) {
+    query = (
+      query as { abortSignal: (s: AbortSignal) => typeof query }
+    ).abortSignal(signal);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching all income sources:", error);
