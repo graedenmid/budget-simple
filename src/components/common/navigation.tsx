@@ -168,7 +168,10 @@ export function Navigation() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={handleSignOut}
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    void handleSignOut();
+                  }}
                   disabled={isLoggingOut}
                   className="text-red-600 focus:text-red-600"
                 >
