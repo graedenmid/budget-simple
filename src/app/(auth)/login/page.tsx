@@ -42,7 +42,16 @@ function LoginForm() {
   const onSubmit = async (data: SignInData) => {
     try {
       setError(null);
-      await signIn(data.email, data.password);
+      // Call server-side sign-in to set cookies reliably
+      const res = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `Sign in failed (${res.status})`);
+      }
       router.push(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign in");

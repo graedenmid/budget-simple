@@ -34,9 +34,10 @@ export function Navigation() {
   const handleSignOut = async () => {
     try {
       setIsLoggingOut(true);
+      // 1) Clear client session (localStorage) and broadcast auth change
       await signOut();
-      // Force a page refresh and redirect to home after successful sign out
-      window.location.href = "/";
+      // 2) Clear server-side cookies and force full reload
+      window.location.assign("/auth/signout");
     } catch (error) {
       console.error("Failed to sign out:", error);
       setIsLoggingOut(false);

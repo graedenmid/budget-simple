@@ -21,7 +21,6 @@ export default function Home() {
   // Auto-redirect authenticated users to dashboard immediately
   useEffect(() => {
     if (!loading && user) {
-      // Use replace to avoid adding to browser history
       router.replace("/dashboard");
     }
   }, [user, loading, router]);
