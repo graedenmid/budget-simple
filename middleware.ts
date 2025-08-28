@@ -41,8 +41,8 @@ export async function middleware(request: NextRequest) {
 
   // Define protected routes
   const protectedRoutes = ["/dashboard", "/budget", "/income", "/expenses"];
-  const authRoutes = ["/login", "/register", "/reset-password"];
-  const publicRoutes = ["/", "/auth/callback"];
+  const authRoutes = ["/login", "/register"];
+  const publicRoutes = ["/", "/auth/callback", "/reset-password"];
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
