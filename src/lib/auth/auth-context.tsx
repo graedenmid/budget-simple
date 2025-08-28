@@ -31,6 +31,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
 
+  // Utility to fail fast on hanging SDK calls
+  const withTimeout = useCallback(
+    async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+      return await new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${ms}ms`));
+        }, ms);
+        promise
+          .then((v) => {
+            clearTimeout(timer);
+            resolve(v);
+          })
+          .catch((e) => {
+            clearTimeout(timer);
+            reject(e);
+          });
+      });
+    },
+    []
+  );
+
   // Create user profile in database
   const createUserProfile = useCallback(
     async (user: User | null | undefined) => {
@@ -120,7 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       setLoading(false);
 
-      // Handle auth events
+      // Handle normal sign-in
       if (event === "SIGNED_IN") {
         await createUserProfile(session?.user);
       }
@@ -212,6 +233,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    // Optimistically clear local state to prevent UI from thinking user is still signed in
+    setUser(null);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -220,20 +243,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             error: error.message,
           })
         );
-        throw new Error(error.message);
       }
     } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error("Failed to sign out");
+      await logger.logBudgetError(
+        new AuthError("Unexpected error during sign out", "SIGN_OUT_ERROR", {
+          error: error instanceof Error ? error.message : "Unknown error",
+        })
+      );
+      // Do not throw; proceed with server-side cookie clear/redirect
     }
   };
 
   const resetPassword = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery&next=/reset-password`,
       });
 
       if (error) {
@@ -255,19 +279,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updatePassword = async (password: string) => {
     try {
-      const { error } = await supabase.auth.updateUser({
-        password,
-      });
+      // Ensure we have an access token for manual fallback
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (error) {
-        await logger.logBudgetError(
-          new AuthError("Password update failed", "PASSWORD_UPDATE_ERROR", {
-            error: error.message,
-          })
+      // Attempt a refresh; do not fail hard on errors, but time-box it
+      try {
+        await withTimeout(
+          supabase.auth.refreshSession(),
+          7000,
+          "Session refresh"
         );
-        throw new Error(error.message);
+      } catch {
+        // ignore refresh errors; proceed
+      }
+
+      // Try SDK path first (time-boxed)
+      try {
+        const { error } = await withTimeout(
+          supabase.auth.updateUser({ password }),
+          10000,
+          "Password update"
+        );
+        if (error) {
+          throw new Error(error.message);
+        }
+        return;
+      } catch (sdkError) {
+        // Fallback to direct REST call if SDK path hangs/fails
+        if (!session?.access_token) {
+          throw sdkError instanceof Error
+            ? sdkError
+            : new Error("No active recovery session. Re-open the reset link.");
+        }
+
+        const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/user`;
+        const res = await withTimeout(
+          fetch(url, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ password }),
+          }),
+          10000,
+          "Password update (REST)"
+        );
+
+        if (!res.ok) {
+          const text = await res.text();
+          await logger.logBudgetError(
+            new AuthError("Password update failed", "PASSWORD_UPDATE_ERROR", {
+              error: text || `${res.status} ${res.statusText}`,
+            })
+          );
+          throw new Error(text || `Password update failed (${res.status})`);
+        }
       }
     } catch (error) {
+      // Surface the actual error message when available
       if (error instanceof Error) {
         throw error;
       }

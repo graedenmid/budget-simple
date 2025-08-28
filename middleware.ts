@@ -2,7 +2,8 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
+  // Base response object that Supabase cookie setter will mutate
+  let response = NextResponse.next({
     request,
   });
 
@@ -22,27 +23,49 @@ export async function middleware(request: NextRequest) {
           cookiesToSet.forEach(({ name, value, options }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({
-            request,
-          });
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          // Ensure cookies are applied to the current response object
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            response.cookies.set(name, value, options)
           );
         },
       },
     }
   );
 
+  // Handle verification code from Supabase arriving at root (e.g., /?code=...)
+  const code = request.nextUrl.searchParams.get("code");
+  if (request.nextUrl.pathname === "/" && code) {
+    const target = new URL("/reset-password", request.url);
+    target.searchParams.set("code", code);
+    response = NextResponse.redirect(target);
+    // Also perform server-side exchange to set cookies immediately
+    await supabase.auth.exchangeCodeForSession(code);
+    return response;
+  }
+
   // Refresh session if expired - required for Server Components
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // If coming from Supabase recovery verification, force reset page
+  const referer = request.headers.get("referer") || "";
+  if (
+    referer.includes("/auth/v1/verify") ||
+    request.nextUrl.searchParams.get("type") === "recovery"
+  ) {
+    return NextResponse.redirect(new URL("/reset-password", request.url));
+  }
+
   // Define protected routes
   const protectedRoutes = ["/dashboard", "/budget", "/income", "/expenses"];
   const authRoutes = ["/login", "/register"];
-  const publicRoutes = ["/", "/auth/callback", "/reset-password"];
+  const publicRoutes = [
+    "/",
+    "/auth/callback",
+    "/reset-password",
+    "/auth/signout",
+  ];
 
   const isProtectedRoute = protectedRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
@@ -53,6 +76,11 @@ export async function middleware(request: NextRequest) {
   const isPublicRoute = publicRoutes.some((route) =>
     request.nextUrl.pathname.startsWith(route)
   );
+
+  // If the URL itself includes type=recovery (e.g., proxied params), route to reset
+  if (request.nextUrl.searchParams.get("type") === "recovery") {
+    return NextResponse.redirect(new URL("/reset-password", request.url));
+  }
 
   // Redirect logic
   if (isProtectedRoute && !user) {
@@ -69,10 +97,10 @@ export async function middleware(request: NextRequest) {
 
   // Allow public routes to pass through
   if (isPublicRoute) {
-    return supabaseResponse;
+    return response;
   }
 
-  return supabaseResponse;
+  return response;
 }
 
 export const config = {

@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2, CheckCircle } from "lucide-react";
 
-import { useAuth } from "@/lib/auth/auth-context";
 import {
   resetPasswordSchema,
   type ResetPasswordData,
@@ -22,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { createClient } from "@/lib/supabase/client";
 
 function ResetPasswordForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +30,8 @@ function ResetPasswordForm() {
   const [success, setSuccess] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { updatePassword } = useAuth();
+  // Note: server API handles the password update using session cookies
+  const supabase = createClient();
 
   const {
     register,
@@ -41,20 +42,55 @@ function ResetPasswordForm() {
   });
 
   useEffect(() => {
-    // Check if we have the required tokens/session for password reset
+    // If a code param is present, exchange it for a session client-side as a fallback
+    const maybeExchange = async () => {
+      try {
+        const code = searchParams.get("code");
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+          // Clean code from URL to prevent re-exchange on re-render
+          const url = new URL(window.location.href);
+          url.searchParams.delete("code");
+          window.history.replaceState({}, "", url.toString());
+        }
+      } catch (e) {
+        // Surface a helpful error but allow manual retry
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Unable to validate reset link. Please try again."
+        );
+      }
+    };
+
+    // Validate we have code param or a valid session; otherwise show guidance
     const error = searchParams.get("error");
     const errorDescription = searchParams.get("error_description");
-
     if (error) {
       setError(errorDescription || "Invalid or expired reset link");
+      return;
     }
-  }, [searchParams]);
+    void maybeExchange();
+  }, [searchParams, supabase]);
 
   const onSubmit = async (data: ResetPasswordData) => {
     try {
       setError(null);
-      await updatePassword(data.password);
+      // Call server API to ensure cookies/session are used from the same origin
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: data.password }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `Password update failed (${res.status})`);
+      }
       setSuccess(true);
+      // Clear recovery flag so normal redirects resume
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("recovery");
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to update password"
@@ -98,7 +134,11 @@ function ResetPasswordForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            className="space-y-4"
+            noValidate
+          >
             {error && (
               <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
@@ -163,7 +203,12 @@ function ResetPasswordForm() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button
+              type="button"
+              onClick={handleSubmit(onSubmit)}
+              className="w-full"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

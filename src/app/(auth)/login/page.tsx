@@ -7,7 +7,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
-import { useAuth } from "@/lib/auth/auth-context";
 import { signInSchema, type SignInData } from "@/lib/validations/auth-schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +26,6 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn } = useAuth();
 
   const redirectTo = searchParams.get("redirectTo") || "/dashboard";
 
@@ -42,7 +40,16 @@ function LoginForm() {
   const onSubmit = async (data: SignInData) => {
     try {
       setError(null);
-      await signIn(data.email, data.password);
+      // Call server-side sign-in to set cookies reliably
+      const res = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        throw new Error(j?.error || `Sign in failed (${res.status})`);
+      }
       router.push(redirectTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to sign in");
